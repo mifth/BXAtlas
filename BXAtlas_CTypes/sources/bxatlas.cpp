@@ -79,19 +79,22 @@ extern "C" {
         }
         catch (const std::runtime_error& e) {
             std::cerr << "Runtime error: " << e.what() << std::endl;
+            printf(e.what());
         }
         catch (const std::exception& e) {
             std::cerr << "Error: " << e.what() << std::endl;
+            printf(e.what());
         }
         catch (...) {
             std::cerr << "An unknown error occurred." << std::endl;
+            printf("An unknown error occurred");
         }
 
         // To Blender Struct
         DataToBlender* toBlender = new DataToBlender();
 
 		for (uint32_t i = 0; i < atlas->meshCount; i++) 
-        {   
+        {
 			const xatlas::Mesh& mesh = atlas->meshes[i];
 
             printf("loops_total_size, indices_size, positions_size: %i, %i, %i\n" , 
@@ -104,20 +107,17 @@ extern "C" {
             toBlender->uvs = new float[mesh.indexCount * 2];
 
             // printf("\rXxxx: %i  %i\n", mesh.vertexCount, mesh.indexCount);
-
-            uint32_t indexID = 0;
             
             for (uint32_t j = 0; j < mesh.indexCount; j++)
             {
-                const xatlas::Vertex &vert = mesh.vertexArray[mesh.indexArray[j]];
-
-                toBlender->uvs[indexID] = vert.uv[0] / atlas->width;
-                toBlender->uvs[indexID + 1] = vert.uv[1] / atlas->height;
-
-                printf("IndexItem, uv0, uv1: %i\n" , mesh.indexArray[j]);
+                printf("j RequestedVertex: %i %i\n" , j ,mesh.indexArray[j]);
+                printf("IndexItem: %i\n" , mesh.indexArray[j]);
                 // printf("IndexItem, uv0, uv1: %i, %f, %f\n" , mesh.indexArray[j], vert.uv[0], vert.uv[1]);
 
-                indexID += 2;
+                const xatlas::Vertex &vert = mesh.vertexArray[mesh.indexArray[j]];
+
+                toBlender->uvs[j * 2] = vert.uv[0] / atlas->width;
+                toBlender->uvs[j * 2 + 1] = vert.uv[1] / atlas->height;
 
                 // printf("\rError: %f %f\n", vert.uv[0], vert.uv[1]);
             }
