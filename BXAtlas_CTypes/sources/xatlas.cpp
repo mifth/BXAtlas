@@ -9030,7 +9030,7 @@ static uint32_t DecodeIndex(IndexFormat format, const void *indexData, int32_t o
 }
 
 AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountHint)
-{	
+{
 	XA_DEBUG_ASSERT(atlas);
 	if (!atlas) {
 		XA_PRINT_WARNING("AddMesh: atlas is null.\n");
@@ -9098,22 +9098,16 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 	internal::Array<uint32_t> triIndices;
 	internal::Array<uint32_t> indicesIDs;
 	internal::Triangulator triangulator;
-
 	uint32_t polygonStartID = 0;
-
 	internal::Array<uint32_t> polygon;
-
 	for (uint32_t face = 0; face < faceCount; face++) {
 		// Decode face indices.
 		const uint32_t faceVertexCount = meshDecl.faceVertexCount ? (uint32_t)meshDecl.faceVertexCount[face] : 3;
-
 		polygon.clear();
-
 		for (uint32_t i = 0; i < faceVertexCount; i++) {
 			if (hasIndices) {
 				uint32_t vertID = DecodeIndex(meshDecl.indexFormat, meshDecl.indexData, meshDecl.indexOffset, polygonStartID + i);
 				polygon.push_back(vertID);
-				printf("i, polygonStartID, poligon[i] %i %i %i\n", i, polygonStartID,  polygon[i]);
 				// Check if any index is out of range.
 				if (polygon[i] >= meshDecl.vertexCount) {
 					mesh->~Mesh();
@@ -9218,13 +9212,9 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 		}
 		if (meshPolygonMapping) {
 			for (uint32_t i = 0; i < triIndices.size(); i++)
-			{
 				meshPolygonMapping->triangleToPolygonIndicesMap.push_back(indicesIDs[i] + polygonStartID);
-				printf("PoyIndicesXxx %i \n", indicesIDs[i] + polygonStartID);
-			}
 		}
-
-		polygonStartID += faceVertexCount;  // Add an offset for the start of index
+		polygonStartID += faceVertexCount;  // Add an offset for the next polygon's start index
 	}
 	if (warningCount > kMaxWarnings)
 		XA_PRINT("   %u additional warnings truncated\n", warningCount - kMaxWarnings);
@@ -9771,21 +9761,15 @@ void PackCharts(Atlas *atlas, PackOptions packOptions)
 						vertex.xref = chart->mapChartVertexToSourceVertex(v);
 					}
 					// Indices.
-					printf("---- faceCount firstVertex  %i %i \n", firstVertex, outputMesh.indexArray[1]);
-					printf("---- UNIFIEDMESH indexCount faceCount  %i %i \n", unifiedMesh->indexCount(), unifiedMesh->faceCount());
 					for (uint32_t f = 0; f < faceCount; f++) {
 						const uint32_t indexOffset = chart->mapFaceToSourceFace(f) * 3;
-						printf("ORIGINAL indexOffset %i \n", indexOffset );
 						for (uint32_t j = 0; j < 3; j++) {
 							uint32_t outIndex = indexOffset + j;
-							printf("zzzz indexOffset outIndex chart->originalVertices()[f * 3 + j] %i %i %i \n", indexOffset, outIndex, firstVertex + chart->originalVertices()[f * 3 + j]);
 							if (meshPolygonMapping)
 								outIndex = meshPolygonMapping->triangleToPolygonIndicesMap[outIndex];
 							outputMesh.indexArray[outIndex] = firstVertex + chart->originalVertices()[f * 3 + j];
-							printf("indexOffset outIndex %i %i \n", indexOffset, outIndex );
 						}
 					}
-					printf("YYyyyyyyy  %i %i \n", outputMesh.indexArray[0], outputMesh.indexArray[1]);
 					// Charts.
 					Chart *outputChart = &outputMesh.chartArray[meshChartIndex];
 					const int32_t atlasIndex = packAtlas.getChart(chartIndex)->atlasIndex;

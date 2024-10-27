@@ -72,7 +72,7 @@ extern "C" {
             xatlas::AddMeshError meshError = xatlas::AddMesh(atlas, meshDecl);
 
             if (meshError != xatlas::AddMeshError::Success) {
-                printf("\rError: %s\n", xatlas::StringForEnum(meshError));
+                // printf("\rError: %s\n", xatlas::StringForEnum(meshError));
             }
 
             xatlas::Generate(atlas, chartOptions, packOptions);
@@ -97,11 +97,11 @@ extern "C" {
         {
 			const xatlas::Mesh& mesh = atlas->meshes[i];
 
-            printf("loops_total_size, indices_size, positions_size: %i, %i, %i\n" , 
-            dataFromBlender->loops_total_size, dataFromBlender->indices_size, dataFromBlender->positions_size);
+            // printf("loops_total_size, indices_size, positions_size: %i, %i, %i\n" , 
+            // dataFromBlender->loops_total_size, dataFromBlender->indices_size, dataFromBlender->positions_size);
 
-            printf("IndexCount, VertCount, MeshesCount, ChartsCount, loops_total_size: %i, %i, %i  %i, %i\n" , mesh.indexCount, mesh.vertexCount, 
-            atlas->meshCount, mesh.chartCount, dataFromBlender->loops_total_size);
+            // printf("IndexCount, VertCount, MeshesCount, ChartsCount, loops_total_size: %i, %i, %i  %i, %i\n" , mesh.indexCount, mesh.vertexCount, 
+            // atlas->meshCount, mesh.chartCount, dataFromBlender->loops_total_size);
 
             // To Blender UVs
             toBlender->uvs = new float[mesh.indexCount * 2];
@@ -110,9 +110,8 @@ extern "C" {
             
             for (uint32_t j = 0; j < mesh.indexCount; j++)
             {
-                printf("j RequestedVertex: %i %i\n" , j ,mesh.indexArray[j]);
-                printf("IndexItem: %i\n" , mesh.indexArray[j]);
-                // printf("IndexItem, uv0, uv1: %i, %f, %f\n" , mesh.indexArray[j], vert.uv[0], vert.uv[1]);
+                // printf("j RequestedVertex: %i %i\n" , j ,mesh.indexArray[j]);
+                // printf("IndexItem: %i\n" , mesh.indexArray[j]);
 
                 const xatlas::Vertex &vert = mesh.vertexArray[mesh.indexArray[j]];
 

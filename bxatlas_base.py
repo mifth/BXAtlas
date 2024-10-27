@@ -56,7 +56,7 @@ class BXA_OP_Test(bpy.types.Operator):
         mesh_verts = np.zeros(len(active_obj.data.vertices) * 3, dtype=np.float32)
         active_obj.data.vertices.foreach_get('co', mesh_verts)
         # mesh_verts.shape = (len(active_obj.data.vertices), 3)
-        print("mesh_verts: ", mesh_verts)
+        # print("mesh_verts: ", mesh_verts)
 
         # PolyIndices
         poly_indices = []
@@ -67,13 +67,14 @@ class BXA_OP_Test(bpy.types.Operator):
 
         # poly_indices = np.zeros(len(active_obj.data.loops), dtype=np.int32)
         # active_obj.data.polygons.foreach_get('vertices', poly_indices)
-        print("poly_indices: ", poly_indices)
+
+        # print("poly_indices: ", poly_indices)
 
         # Get Polygons Loop Start
         np_loops_total = np.empty(len(active_obj.data.polygons), dtype=np.ubyte)
         active_obj.data.polygons.foreach_get("loop_total", np_loops_total)
 
-        print("loops_total: ", np_loops_total)
+        # print("loops_total: ", np_loops_total)
 
         # Normals
         np_normals = np.empty(len(active_obj.data.loops) * 3, dtype=np.float32)
@@ -112,8 +113,8 @@ class BXA_OP_Test(bpy.types.Operator):
         xatlas_contents = xatlas_data.contents
 
         np_new_uvs = np.ctypeslib.as_array(xatlas_contents.uvs, shape=(len(active_obj.data.loops) * 2,))
-        print("outArray Length:  ", len(np_new_uvs))
-        print(np_new_uvs)
+        # print("outArray Length:  ", len(np_new_uvs))
+        # print(np_new_uvs)
 
         if active_uv:
             active_uv.uv.foreach_set("vector", np_new_uvs)
