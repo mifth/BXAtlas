@@ -118,6 +118,8 @@ class BXA_OP_Test(bpy.types.Operator):
         if active_uv:
             active_uv.uv.foreach_set("vector", np_new_uvs)
 
+        active_obj.data.update()
+
         # Clear
         del xatlas_data
         del bxatlas
