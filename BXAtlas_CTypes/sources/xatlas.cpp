@@ -9087,28 +9087,35 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 	uint32_t warningCount = 0;
 	internal::Array<uint32_t> triIndices;
 	internal::Triangulator triangulator;
+
+	uint32_t polygonStartID = 0;
+
 	for (uint32_t face = 0; face < faceCount; face++) {
 		// Decode face indices.
 		const uint32_t faceVertexCount = meshDecl.faceVertexCount ? (uint32_t)meshDecl.faceVertexCount[face] : 3;
 		uint32_t polygon[UINT8_MAX];
 		for (uint32_t i = 0; i < faceVertexCount; i++) {
 			if (hasIndices) {
-				polygon[i] = DecodeIndex(meshDecl.indexFormat, meshDecl.indexData, meshDecl.indexOffset, face * faceVertexCount + i);
-				// Check if any index is out of range.
-				if (polygon[i] >= meshDecl.vertexCount) {
-					mesh->~Mesh();
-					XA_FREE(mesh);
-					return AddMeshError::IndexOutOfRange;
-				}
+				polygon[i] = DecodeIndex(meshDecl.indexFormat, meshDecl.indexData, meshDecl.indexOffset, polygonStartID + i);
+				printf("i, polygonStartID, poligon[i] %i %i %i\n", i, polygonStartID,  polygon[i]);
+				// // Check if any index is out of range.
+				// if (polygon[i] >= meshDecl.vertexCount) {
+				// 	mesh->~Mesh();
+				// 	XA_FREE(mesh);
+				// 	return AddMeshError::IndexOutOfRange;
+				// }
 			} else {
-				polygon[i] = face * faceVertexCount + i;
+				polygon[i] = polygonStartID + i;
 			}
 		}
+
+		polygonStartID += faceVertexCount;
+		
 		// Ignore faces with degenerate or zero length edges.
 		bool ignore = false;
 		for (uint32_t i = 0; i < faceVertexCount; i++) {
 			const uint32_t index1 = polygon[i];
-			const uint32_t index2 = polygon[(i + 1) % 3];
+			const uint32_t index2 = polygon[(i + 1) % faceVertexCount];
 			if (index1 == index2) {
 				ignore = true;
 				if (++warningCount <= kMaxWarnings)
@@ -9740,16 +9747,20 @@ void PackCharts(Atlas *atlas, PackOptions packOptions)
 						vertex.uv[1] = internal::max(0.0f, uv.y);
 						vertex.xref = chart->mapChartVertexToSourceVertex(v);
 					}
+					printf("YYyyyyyyy %i %i %i \n", faceCount, outputMesh.indexArray[0], outputMesh.indexArray[1]);
 					// Indices.
 					for (uint32_t f = 0; f < faceCount; f++) {
 						const uint32_t indexOffset = chart->mapFaceToSourceFace(f) * 3;
 						for (uint32_t j = 0; j < 3; j++) {
 							uint32_t outIndex = indexOffset + j;
-							if (meshPolygonMapping)
-								outIndex = meshPolygonMapping->triangleToPolygonIndicesMap[outIndex];
+							printf("YYyyyyyyy %i %i \n", indexOffset, outIndex);
+							// if (meshPolygonMapping)
+							// 	outIndex = meshPolygonMapping->triangleToPolygonIndicesMap[outIndex];
+							printf("YYyyyyyyy %i %i \n", indexOffset, outIndex );
 							outputMesh.indexArray[outIndex] = firstVertex + chart->originalVertices()[f * 3 + j];
 						}
 					}
+					printf("YYyyyyyyy  %i %i \n", outputMesh.indexArray[0], outputMesh.indexArray[1]);
 					// Charts.
 					Chart *outputChart = &outputMesh.chartArray[meshChartIndex];
 					const int32_t atlasIndex = packAtlas.getChart(chartIndex)->atlasIndex;

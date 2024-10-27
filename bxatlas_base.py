@@ -59,9 +59,14 @@ class BXA_OP_Test(bpy.types.Operator):
         print("mesh_verts: ", mesh_verts)
 
         # PolyIndices
-        poly_indices = np.zeros(len(active_obj.data.loop_triangles) * 3, dtype=np.int32)
-        active_obj.data.polygons.foreach_get('vertices', poly_indices)
-        # poly_indeces.shape = (len(active_obj.data.loop_triangles), 3)
+        poly_indices = []
+        for poly in active_obj.data.polygons:
+            poly_indices += list(poly.vertices)
+
+        poly_indices = np.ctypeslib.as_array(poly_indices, shape=(len(poly_indices),))
+
+        # poly_indices = np.zeros(len(active_obj.data.loops), dtype=np.int32)
+        # active_obj.data.polygons.foreach_get('vertices', poly_indices)
         print("poly_indices: ", poly_indices)
 
         # Get Polygons Loop Start
@@ -106,16 +111,18 @@ class BXA_OP_Test(bpy.types.Operator):
         xatlas_data: DataToBlender = bxatlas.my_test(b_data)
         xatlas_contents = xatlas_data.contents
 
-        np_new_uvs = np.ctypeslib.as_array(xatlas_contents.uvs, shape=(len(poly_indices) * 2,))
+        np_new_uvs = np.ctypeslib.as_array(xatlas_contents.uvs, shape=(len(active_obj.data.loops) * 2,))
         print("outArray Length:  ", len(np_new_uvs))
         print(np_new_uvs)
 
         if active_uv:
             active_uv.uv.foreach_set("vector", np_new_uvs)
-        
 
         # Clear
+        del xatlas_data
         del bxatlas
+        xatlas_data = None
+        bxatlas = None
 
         return {"FINISHED"}
 

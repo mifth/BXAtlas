@@ -2,3 +2,7 @@
 #pragma once
 
 
+namespace bxatlas {
+
+
+}

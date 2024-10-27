@@ -64,22 +64,34 @@ extern "C" {
         meshDecl.faceVertexCount = dataFromBlender->loops_total;
         meshDecl.faceCount = dataFromBlender->loops_total_size;
 
-        xatlas::AddMeshError meshError = xatlas::AddMesh(atlas, meshDecl);
-
-		if (meshError != xatlas::AddMeshError::Success) {
-			printf("\rError: %s\n", xatlas::StringForEnum(meshError));
-		}
-
         xatlas::ChartOptions chartOptions = xatlas::ChartOptions();
+        // chartOptions.useInputMeshUvs = true;
         xatlas::PackOptions packOptions = xatlas::PackOptions();
 
-        xatlas::Generate(atlas, chartOptions, packOptions);
+        try {
+            xatlas::AddMeshError meshError = xatlas::AddMesh(atlas, meshDecl);
+
+            if (meshError != xatlas::AddMeshError::Success) {
+                printf("\rError: %s\n", xatlas::StringForEnum(meshError));
+            }
+
+            xatlas::Generate(atlas, chartOptions, packOptions);
+        }
+        catch (const std::runtime_error& e) {
+            std::cerr << "Runtime error: " << e.what() << std::endl;
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Error: " << e.what() << std::endl;
+        }
+        catch (...) {
+            std::cerr << "An unknown error occurred." << std::endl;
+        }
 
         // To Blender Struct
         DataToBlender* toBlender = new DataToBlender();
 
 		for (uint32_t i = 0; i < atlas->meshCount; i++) 
-        {
+        {   
 			const xatlas::Mesh& mesh = atlas->meshes[i];
 
             printf("loops_total_size, indices_size, positions_size: %i, %i, %i\n" , 
@@ -102,8 +114,8 @@ extern "C" {
                 toBlender->uvs[indexID] = vert.uv[0] / atlas->width;
                 toBlender->uvs[indexID + 1] = vert.uv[1] / atlas->height;
 
-                // printf("IndexItem, uv0, uv1: %i\n" , mesh.indexArray[j]);
-                printf("IndexItem, uv0, uv1: %i, %f, %f\n" , mesh.indexArray[j], vert.uv[0], vert.uv[1]);
+                printf("IndexItem, uv0, uv1: %i\n" , mesh.indexArray[j]);
+                // printf("IndexItem, uv0, uv1: %i, %f, %f\n" , mesh.indexArray[j], vert.uv[0], vert.uv[1]);
 
                 indexID += 2;
 
