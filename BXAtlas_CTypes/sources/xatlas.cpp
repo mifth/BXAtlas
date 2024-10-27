@@ -9114,12 +9114,12 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 				uint32_t vertID = DecodeIndex(meshDecl.indexFormat, meshDecl.indexData, meshDecl.indexOffset, polygonStartID + i);
 				polygon.push_back(vertID);
 				printf("i, polygonStartID, poligon[i] %i %i %i\n", i, polygonStartID,  polygon[i]);
-				// // Check if any index is out of range.
-				// if (polygon[i] >= meshDecl.vertexCount) {
-				// 	mesh->~Mesh();
-				// 	XA_FREE(mesh);
-				// 	return AddMeshError::IndexOutOfRange;
-				// }
+				// Check if any index is out of range.
+				if (polygon[i] >= meshDecl.vertexCount) {
+					mesh->~Mesh();
+					XA_FREE(mesh);
+					return AddMeshError::IndexOutOfRange;
+				}
 			} else {
 				polygon[i] = polygonStartID + i;
 			}
