@@ -21,7 +21,7 @@ class DataFromBlender(ctypes.Structure):
         ("indices", POINTER(c_int32)),
         ("indices_size", c_int32),
 
-        ("loops_total", POINTER(c_ubyte)),
+        ("loops_total", POINTER(c_int32)),
         ("loops_total_size", c_int32),
 
         ("normals", POINTER(c_float)),
@@ -47,16 +47,11 @@ class BXA_OP_Test(bpy.types.Operator):
         return bxatlas
 
     def execute(self, context):
-        # mesh: trimesh.Geometry = trimesh.load_mesh("D:/Projects/Test/Blender/box.obj")
-        # print(mesh.vertices)
-
         active_obj: bpy.types.Object = context.active_object
 
         # Positions
         mesh_verts = np.zeros(len(active_obj.data.vertices) * 3, dtype=np.float32)
         active_obj.data.vertices.foreach_get('co', mesh_verts)
-        # mesh_verts.shape = (len(active_obj.data.vertices), 3)
-        # print("mesh_verts: ", mesh_verts)
 
         # PolyIndices
         poly_indices = []
@@ -65,16 +60,9 @@ class BXA_OP_Test(bpy.types.Operator):
 
         poly_indices = np.ctypeslib.as_array(poly_indices, shape=(len(poly_indices),))
 
-        # poly_indices = np.zeros(len(active_obj.data.loops), dtype=np.int32)
-        # active_obj.data.polygons.foreach_get('vertices', poly_indices)
-
-        # print("poly_indices: ", poly_indices)
-
         # Get Polygons Loop Start
-        np_loops_total = np.empty(len(active_obj.data.polygons), dtype=np.ubyte)
+        np_loops_total = np.empty(len(active_obj.data.polygons), dtype=np.int32)
         active_obj.data.polygons.foreach_get("loop_total", np_loops_total)
-
-        # print("loops_total: ", np_loops_total)
 
         # Normals
         np_normals = np.empty(len(active_obj.data.loops) * 3, dtype=np.float32)
@@ -88,6 +76,9 @@ class BXA_OP_Test(bpy.types.Operator):
             # uvs = [uv.uv[:] for uv in active_uv]
             np_uvs = np.empty(len(active_obj.data.loops) * 2, dtype=np.float32)
             active_uv.uv.foreach_get("vector", np_uvs)
+
+
+        print("Python Data: ", len(poly_indices), len(mesh_verts), len(np_loops_total), len(np_uvs))
 
         # Load XAtlas
         bxatlas = self.load_xatlas()
@@ -113,8 +104,6 @@ class BXA_OP_Test(bpy.types.Operator):
         xatlas_contents = xatlas_data.contents
 
         np_new_uvs = np.ctypeslib.as_array(xatlas_contents.uvs, shape=(len(active_obj.data.loops) * 2,))
-        # print("outArray Length:  ", len(np_new_uvs))
-        # print(np_new_uvs)
 
         if active_uv:
             active_uv.uv.foreach_set("vector", np_new_uvs)
@@ -124,8 +113,10 @@ class BXA_OP_Test(bpy.types.Operator):
         # Clear
         del xatlas_data
         del bxatlas
+        del b_data
         xatlas_data = None
         bxatlas = None
+        b_data = None
 
         return {"FINISHED"}
 

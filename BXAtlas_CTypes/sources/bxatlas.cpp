@@ -24,10 +24,10 @@ extern "C" {
         float* positions = nullptr;
         int positions_size;
 
-        int* indices = nullptr;
+        uint32_t* indices = nullptr;
         int indices_size;
 
-        uint8_t* loops_total = nullptr;
+        uint32_t* loops_total = nullptr;
         int loops_total_size;
 
         float* normals = nullptr;
@@ -57,12 +57,15 @@ extern "C" {
 			meshDecl.vertexUvStride = sizeof(float) * 2;
 		}
         
+		meshDecl.indexFormat = xatlas::IndexFormat::UInt32;
 		meshDecl.indexCount = dataFromBlender->indices_size;
 		meshDecl.indexData = dataFromBlender->indices;
-		meshDecl.indexFormat = xatlas::IndexFormat::UInt32;
 
         meshDecl.faceVertexCount = dataFromBlender->loops_total;
         meshDecl.faceCount = dataFromBlender->loops_total_size;
+
+        // To Blender Struct
+        DataToBlender* toBlender = new DataToBlender();
 
         xatlas::ChartOptions chartOptions = xatlas::ChartOptions();
         // chartOptions.useInputMeshUvs = true;
@@ -76,6 +79,36 @@ extern "C" {
             }
 
             xatlas::Generate(atlas, chartOptions, packOptions);
+
+            for (uint32_t i = 0; i < atlas->meshCount; i++) 
+            {
+                const xatlas::Mesh& mesh = atlas->meshes[i];
+
+                // printf("loops_total_size, indices_size, positions_size: %i, %i, %i\n" , 
+                // dataFromBlender->loops_total_size, dataFromBlender->indices_size, dataFromBlender->positions_size);
+
+                // printf("IndexCount, VertCount, MeshesCount, ChartsCount, loops_total_size: %i, %i, %i  %i, %i\n" , mesh.indexCount, mesh.vertexCount, 
+                // atlas->meshCount, mesh.chartCount, dataFromBlender->loops_total_size);
+
+                // To Blender UVs
+                toBlender->uvs = new float[mesh.indexCount * 2];
+
+                // printf("\rXxxx: %i  %i\n", mesh.vertexCount, mesh.indexCount);
+                
+                for (uint32_t j = 0; j < mesh.indexCount; j++)
+                {
+                    // printf("j RequestedVertex: %i %i\n" , j ,mesh.indexArray[j]);
+                    // printf("IndexItem: %i\n" , mesh.indexArray[j]);
+
+                    const xatlas::Vertex &vert = mesh.vertexArray[mesh.indexArray[j]];
+
+                    toBlender->uvs[j * 2] = vert.uv[0] / atlas->width;
+                    toBlender->uvs[j * 2 + 1] = vert.uv[1] / atlas->height;
+
+                    // printf("\rError: %f %f\n", vert.uv[0], vert.uv[1]);
+                }
+            }
+            printf("XAtlasCPP is Done!");
         }
         catch (const std::runtime_error& e) {
             std::cerr << "Runtime error: " << e.what() << std::endl;
@@ -88,38 +121,6 @@ extern "C" {
         catch (...) {
             std::cerr << "An unknown error occurred." << std::endl;
             printf("An unknown error occurred");
-        }
-
-        // To Blender Struct
-        DataToBlender* toBlender = new DataToBlender();
-
-		for (uint32_t i = 0; i < atlas->meshCount; i++) 
-        {
-			const xatlas::Mesh& mesh = atlas->meshes[i];
-
-            // printf("loops_total_size, indices_size, positions_size: %i, %i, %i\n" , 
-            // dataFromBlender->loops_total_size, dataFromBlender->indices_size, dataFromBlender->positions_size);
-
-            // printf("IndexCount, VertCount, MeshesCount, ChartsCount, loops_total_size: %i, %i, %i  %i, %i\n" , mesh.indexCount, mesh.vertexCount, 
-            // atlas->meshCount, mesh.chartCount, dataFromBlender->loops_total_size);
-
-            // To Blender UVs
-            toBlender->uvs = new float[mesh.indexCount * 2];
-
-            // printf("\rXxxx: %i  %i\n", mesh.vertexCount, mesh.indexCount);
-            
-            for (uint32_t j = 0; j < mesh.indexCount; j++)
-            {
-                // printf("j RequestedVertex: %i %i\n" , j ,mesh.indexArray[j]);
-                // printf("IndexItem: %i\n" , mesh.indexArray[j]);
-
-                const xatlas::Vertex &vert = mesh.vertexArray[mesh.indexArray[j]];
-
-                toBlender->uvs[j * 2] = vert.uv[0] / atlas->width;
-                toBlender->uvs[j * 2 + 1] = vert.uv[1] / atlas->height;
-
-                // printf("\rError: %f %f\n", vert.uv[0], vert.uv[1]);
-            }
         }
 
         Destroy(atlas);
