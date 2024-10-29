@@ -3486,13 +3486,13 @@ struct Triangulator
 			m_polygonPoints.reserve(edgeCount);
 			m_polygonAngles.clear();
 			m_polygonAngles.reserve(edgeCount);
-			// A temporary array for indicesIDs
-			Array<uint32_t> indicesIDsTmp;
+			m_indicesIDs.clear();
+			m_indicesIDs.reserve(edgeCount);
 			for (uint32_t i = 0; i < inputIndices.size(); i++) {
 				m_polygonVertices.push_back(inputIndices[i]);
 				const Vector3 &pos = vertices[inputIndices[i]];
 				m_polygonPoints.push_back(Vector2(dot(basis.tangent, pos), dot(basis.bitangent, pos)));
-				indicesIDsTmp.push_back(i);
+				m_indicesIDs.push_back(i);
 			}
 			m_polygonAngles.resize(edgeCount);
 			while (m_polygonVertices.size() > 2) {
@@ -3540,11 +3540,11 @@ struct Triangulator
 				outputIndices.push_back(m_polygonVertices[i0]);
 				outputIndices.push_back(m_polygonVertices[i1]);
 				outputIndices.push_back(m_polygonVertices[i2]);
-				outindicesIDs.push_back(indicesIDsTmp[i0]);  // Add Index of Array of Vertex Indices
-				outindicesIDs.push_back(indicesIDsTmp[i1]);
-				outindicesIDs.push_back(indicesIDsTmp[i2]);
+				outindicesIDs.push_back(m_indicesIDs[i0]);  // Add Index of Array of Vertex Indices
+				outindicesIDs.push_back(m_indicesIDs[i1]);
+				outindicesIDs.push_back(m_indicesIDs[i2]);
 				m_polygonVertices.removeAt(i1);
-				indicesIDsTmp.removeAt(i1);
+				m_indicesIDs.removeAt(i1);
 				m_polygonPoints.removeAt(i1);
 				m_polygonAngles.removeAt(i1);
 			}
@@ -3560,6 +3560,7 @@ private:
 	Array<int> m_polygonVertices;
 	Array<float> m_polygonAngles;
 	Array<Vector2> m_polygonPoints;
+	Array<uint32_t> m_indicesIDs;  // indexes of polygon's Indices array
 };
 
 class UniformGrid2
@@ -9082,6 +9083,10 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 			normal = DecodeNormal(meshDecl, i);
 		if (meshDecl.vertexUvData)
 			texcoord = DecodeUv(meshDecl, i);
+		
+		// if (i % 100 == 0)
+		// 	printf("AAaaaaa %i %i \n", i, meshDecl.vertexCount);
+			
 		mesh->addVertex(DecodePosition(meshDecl, i), normal, texcoord);
 	}
 	MeshPolygonMapping *meshPolygonMapping = nullptr;
@@ -9183,17 +9188,18 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 		}
 		// Check for zero area faces.
 		if (!ignore) {
+			float area = 0.0f;  // Area of all triangles of the polygon.
 			for (uint32_t i = 0; i < triIndices.size(); i += 3) {
 				const internal::Vector3 &a = mesh->position(triIndices[i + 0]);
 				const internal::Vector3 &b = mesh->position(triIndices[i + 1]);
 				const internal::Vector3 &c = mesh->position(triIndices[i + 2]);
-				const float area = internal::length(internal::cross(b - a, c - a)) * 0.5f;
-				if (area <= internal::kAreaEpsilon) {
-					ignore = true;
-					if (++warningCount <= kMaxWarnings)
-						XA_PRINT("   Zero area face: %d, area is %f\n", face, area);
-					break;
-				}
+				area += internal::length(internal::cross(b - a, c - a)) * 0.5f;
+				if (area > internal::kAreaEpsilon) break;  // Optimisation for high polygonal NGons
+			}
+			if (area <= internal::kAreaEpsilon) {
+				ignore = true;
+				if (++warningCount <= kMaxWarnings)
+					XA_PRINT("   Zero area face: %d, area is %f\n", face, area);
 			}
 		}
 		// User face ignore.

@@ -19,7 +19,7 @@ namespace bxatlas {
 #endif
 
 
-struct DataFromBlender {
+typedef struct DataFromBlender {
     float* positions = nullptr;
     int positions_size;
 
@@ -31,11 +31,11 @@ struct DataFromBlender {
 
     float* normals = nullptr;
     float* uvs = nullptr;
-};
+} DataFromBlender;
 
-struct DataToBlender {
+typedef struct DataToBlender {
     float* uvs = nullptr;
-};
+} DataToBlender;
 
 #if defined(__cplusplus)
 extern "C" {
@@ -46,20 +46,6 @@ DLL00_EXPORT_API DataToBlender* my_test(const DataFromBlender* dataFromBlender);
 #if defined(__cplusplus)
 }
 #endif
-
-void RecordError(const std::runtime_error& e)
-{
-    std::ofstream logfile("d:/error_log.txt", std::ios::app);
-    logfile << "Runtime error: " << e.what() << std::endl;
-    logfile.close();
-}
-
-void RecordError2(const std::exception& e)
-{
-    std::ofstream logfile("d:/error_log.txt", std::ios::app);
-    logfile << "Runtime error: " << e.what() << std::endl;
-    logfile.close();
-}
 
 DataToBlender* my_test(const DataFromBlender* dataFromBlender)
 {
@@ -140,20 +126,24 @@ DataToBlender* my_test(const DataFromBlender* dataFromBlender)
     }
     catch (const std::runtime_error& e) {
         std::cerr << "Runtime error: " << e.what() << std::endl;
-        RecordError(e);
-        printf(e.what());
+        delete toBlender;
+        xatlas::Destroy(atlas);
+        return nullptr;
     }
     catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
-        RecordError2(e);
-        printf(e.what());
+        delete toBlender;
+        xatlas::Destroy(atlas);
+        return nullptr;
     }
     catch (...) {
         std::cerr << "An unknown error occurred." << std::endl;
-        printf("An unknown error occurred \n");
+        delete toBlender;
+        xatlas::Destroy(atlas);
+        return nullptr;
     }
 
-    Destroy(atlas);
+    xatlas::Destroy(atlas);
 
     return toBlender;
 }
