@@ -8,7 +8,6 @@ using namespace std;
 
 #include <xatlas.h>
 
-// using namespace xatlas;
 
 namespace bxatlas {
 
@@ -41,13 +40,13 @@ typedef struct DataToBlender {
 extern "C" {
 #endif
 
-DLL00_EXPORT_API DataToBlender* my_test(const DataFromBlender* dataFromBlender);
+DLL00_EXPORT_API DataToBlender* RunXAtlas(const DataFromBlender* dataFromBlender);
 
 #if defined(__cplusplus)
 }
 #endif
 
-DataToBlender* my_test(const DataFromBlender* dataFromBlender)
+DataToBlender* RunXAtlas(const DataFromBlender* dataFromBlender)
 {
     xatlas::Atlas* atlas = xatlas::Create();
 

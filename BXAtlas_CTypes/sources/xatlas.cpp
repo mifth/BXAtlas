@@ -3268,9 +3268,9 @@ private:
 	static void workerThread(TaskScheduler *scheduler, Worker *worker, uint32_t threadIndex)
 	{
 		m_threadIndex = threadIndex;
-		// std::unique_lock<std::mutex> lock(worker->mutex);
+		std::unique_lock<std::mutex> lock(worker->mutex);
 		for (;;) {
-			// worker->cv.wait(lock, [=]{ return worker->wakeup.load(); });
+			worker->cv.wait(lock, [=]{ return worker->wakeup.load(); });
 			worker->wakeup = false;
 			for (;;) {
 				if (scheduler->m_shutdown)

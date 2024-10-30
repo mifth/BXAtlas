@@ -49,6 +49,8 @@ class BXA_OP_Test(bpy.types.Operator):
     def execute(self, context):
         active_obj: bpy.types.Object = context.active_object
 
+        # bpy.ops.ed.undo_push()
+
         # Positions
         mesh_verts = np.zeros(len(active_obj.data.vertices) * 3, dtype=np.float32)
         active_obj.data.vertices.foreach_get('co', mesh_verts)
@@ -97,10 +99,22 @@ class BXA_OP_Test(bpy.types.Operator):
            np.ctypeslib.as_ctypes(np_uvs),
         )
 
-        bxatlas.my_test.argtypes = (POINTER(DataFromBlender), )
-        bxatlas.my_test.restype = ctypes.POINTER(DataToBlender)
+        bxatlas.RunXAtlas.argtypes = (POINTER(DataFromBlender), )
+        bxatlas.RunXAtlas.restype = ctypes.POINTER(DataToBlender)
 
-        xatlas_data: DataToBlender = bxatlas.my_test(b_data)
+        try:
+            xatlas_data: DataToBlender = bxatlas.RunXAtlas(b_data)
+        except:
+            print("No Data From XAtlas!")
+            del bxatlas
+            del b_data
+            xatlas_data = None
+            bxatlas = None
+            b_data = None
+
+            return {"CANCELLED"}
+
+
         xatlas_contents = xatlas_data.contents
 
         np_new_uvs = np.ctypeslib.as_array(xatlas_contents.uvs, shape=(len(active_obj.data.loops) * 2,))
