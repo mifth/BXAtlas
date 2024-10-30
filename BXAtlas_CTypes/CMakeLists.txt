@@ -14,7 +14,7 @@ file(GLOB SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/sources/*.cpp)
 # Include header files
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-add_definitions(/D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)
+add_definitions(/D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR)  # Fix of mutex crashes
 
 add_library(BXAtlas SHARED
     sources/xatlas.cpp
