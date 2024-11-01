@@ -3465,9 +3465,8 @@ struct Triangulator
 	// also sort the ears by angle, start with the ones that have the smallest angle and proceed in order.
 	void triangulatePolygon(ConstArrayView<Vector3> vertices, const Array<uint32_t>& inputIndices, Array<uint32_t> &outputIndices, Array<uint32_t> &outindicesIDs)
 	{
-		m_polygonVertices.clear();
-		m_polygonVertices.reserve(inputIndices.size());
 		outputIndices.clear();
+		outindicesIDs.clear();
 		if (inputIndices.size() == 3) {
 			// Simple case for triangles.
 			outputIndices.push_back(inputIndices[0]);
@@ -3492,6 +3491,8 @@ struct Triangulator
 			m_polygonAngles.reserve(edgeCount);
 			m_indicesIDs.clear();
 			m_indicesIDs.reserve(edgeCount);
+			m_polygonVertices.clear();
+			m_polygonVertices.reserve(inputIndices.size());
 			for (uint32_t i = 0; i < inputIndices.size(); i++) {
 				m_polygonVertices.push_back(inputIndices[i]);
 				const Vector3 &pos = vertices[inputIndices[i]];
@@ -9148,7 +9149,7 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 			if (hasIndices) {
 				uint32_t vertID = DecodeIndex(meshDecl.indexFormat, meshDecl.indexData, meshDecl.indexOffset, polygonVertexStartID + i);
 				polygon.push_back(vertID);
-				if (faceVertexCount > 3) hasQuadOrNGon = true;  // Mesh has quads or NGons.
+				if (faceVertexCount > 3) hasQuadOrNGon = true;  // Mesh has Quads or NGons.
 				// Check if any index is out of range.
 				if (polygon[i] >= meshDecl.vertexCount
 					|| faceVertexCount < 3) {
