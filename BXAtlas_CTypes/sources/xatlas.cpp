@@ -5198,6 +5198,7 @@ struct PlanarCharts
 		Array<uint32_t> faceStack;
 		faceStack.reserve(min(faceCount, 16u));
 		uint32_t regionCount = 0;
+		bool hasQuadsOrNGons = m_data.mesh->trianglesToPolygonIDs.size() == 0 ? false : true;
 		for (uint32_t f = 0; f < faceCount; f++) {
 			if (m_nextRegionFace[f] != f)
 				continue; // Already assigned.
@@ -5220,8 +5221,7 @@ struct PlanarCharts
 					if (m_data.isFaceInChart.get(oface))
 						continue; // Already in a chart.
 					// if Triangle is not a part of a Quad/NGon do further checks.
-					if (m_data.mesh->trianglesToPolygonIDs.size() == 0
-						|| m_data.mesh->trianglesToPolygonIDs[f] != m_data.mesh->trianglesToPolygonIDs[oface]) {
+					if (!hasQuadsOrNGons || m_data.mesh->trianglesToPolygonIDs[f] != m_data.mesh->trianglesToPolygonIDs[oface]) {
 						if (!equal(dot(m_data.faceNormals[face], m_data.faceNormals[oface]), 1.0f, kEpsilon))
 							continue; // Not coplanar.
 					}
@@ -5269,7 +5269,6 @@ struct PlanarCharts
 		// The dihedral angle of all boundary edges must be >= 90 degrees.
 		m_charts.clear();
 		m_chartFaces.clear();
-		// Array<uint32_t> AddedPolygonsIDs;  // List of Quads/NGons/Trianges IDs
 		for (uint32_t region = 0; region < regionCount; region++) {
 			const uint32_t firstRegionFace = m_regionFirstFace[region];
 			uint32_t face = firstRegionFace;
@@ -5282,8 +5281,7 @@ struct PlanarCharts
 					if (m_faceToRegionId[oface] == region)
 						continue; // Ignore internal edges.
 					// if Triangle is not a part of a Quad/NGon do further checks.
-					if (m_data.mesh->trianglesToPolygonIDs.size() == 0
-						|| m_data.mesh->trianglesToPolygonIDs[face] != m_data.mesh->trianglesToPolygonIDs[oface]) {
+					if (!hasQuadsOrNGons || m_data.mesh->trianglesToPolygonIDs[face] != m_data.mesh->trianglesToPolygonIDs[oface]) {
 						const float angle = m_data.edgeDihedralAngles[it.edge()];
 						if (angle > 0.0f && angle < FLT_MAX) { // FLT_MAX on boundaries.
 							createChart = false;
@@ -5813,6 +5811,7 @@ private:
 		chart->centroid = chart->centroidSum / float(chart->faces.size());
 		// Refresh candidates.
 		chart->candidates.clear();
+		bool hasQuadsOrNGons = m_data.mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
 		for (uint32_t i = 0; i < faceCount; i++) {
 			// Traverse neighboring faces, add the ones that do not belong to any chart yet.
 			const uint32_t f = chart->faces[i];
@@ -5825,8 +5824,7 @@ private:
 				if (m_data.isFaceInChart.get(oface))
 					continue; // Face belongs to another chart.
 				// Add Face/Triangle if it's a part of a Quad/NGon
-				if (m_data.mesh->trianglesToPolygonIDs.size() > 0
-					&& m_data.mesh->trianglesToPolygonIDs[f] == m_data.mesh->trianglesToPolygonIDs[oface]) {
+				if (hasQuadsOrNGons && m_data.mesh->trianglesToPolygonIDs[f] == m_data.mesh->trianglesToPolygonIDs[oface]) {
 					chart->candidates.push(0.0f, oface);  // 0.0f is a perfect cadidate
 					continue;
 				}
