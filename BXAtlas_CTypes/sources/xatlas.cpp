@@ -7175,6 +7175,8 @@ public:
 		m_originalIndices.resize(faces.length * 3);
 		// Add geometry.
 		const uint32_t faceCount = faces.length;
+		if (sourceMesh->trianglesToPolygonIDs.size() > 0)
+			m_unifiedMesh->trianglesToPolygonIDs.resize(faceCount);  // Resize an Array Before copying some IDs
 		for (uint32_t f = 0; f < faceCount; f++) {
 			uint32_t unifiedIndices[3];
 			for (uint32_t i = 0; i < 3; i++) {
@@ -7204,7 +7206,7 @@ public:
 			m_unifiedMesh->addFace(unifiedIndices);
 			// Add TriangleIDs and PolygonIDs
 			if (sourceMesh->trianglesToPolygonIDs.size() > 0)
-				m_unifiedMesh->trianglesToPolygonIDs.push_back(sourceMesh->trianglesToPolygonIDs[m_faceToSourceFaceMap[f]]);
+				m_unifiedMesh->trianglesToPolygonIDs[f] = sourceMesh->trianglesToPolygonIDs[m_faceToSourceFaceMap[f]];
 		}
 		m_unifiedMesh->createBoundaries();
 		if (m_generatorType == segment::ChartGeneratorType::Planar) {
@@ -7256,6 +7258,8 @@ public:
 		}
 		// Add faces.
 		m_originalIndices.resize(faceCount * 3);
+		if (sourceMesh->trianglesToPolygonIDs.size() > 0)  // NOTE FOR FUTURE! Maybe "parentMesh" should be used instead of "sourceMesh"
+			m_unifiedMesh->trianglesToPolygonIDs.resize(faceCount);  // Resize an Array Before copying some IDs
 		for (uint32_t f = 0; f < faceCount; f++) {
 			uint32_t unifiedIndices[3];
 			for (uint32_t i = 0; i < 3; i++) {
@@ -7267,7 +7271,7 @@ public:
 			m_unifiedMesh->addFace(unifiedIndices);
 			// Add TriangleIDs and PolygonIDs
 			if (sourceMesh->trianglesToPolygonIDs.size() > 0)  // NOTE FOR FUTURE! Maybe "parentMesh" should be used instead of "sourceMesh"
-				m_unifiedMesh->trianglesToPolygonIDs.push_back(sourceMesh->trianglesToPolygonIDs[m_faceToSourceFaceMap[f]]);
+				m_unifiedMesh->trianglesToPolygonIDs[f] = sourceMesh->trianglesToPolygonIDs[m_faceToSourceFaceMap[f]];
 		}
 		m_unifiedMesh->createBoundaries();
 		// Need to store texcoords for backup/restore so packing can be run multiple times.
@@ -7705,6 +7709,8 @@ private:
 		const uint32_t approxVertexCount = min(faceCount * 3, m_sourceMesh->vertexCount());
 		Mesh *mesh = XA_NEW_ARGS(MemTag::Mesh, Mesh, m_sourceMesh->epsilon(), approxVertexCount, faceCount, m_sourceMesh->flags() & MeshFlags::HasNormals);
 		HashMap<uint32_t, PassthroughHash<uint32_t>> sourceVertexToVertexMap(MemTag::Mesh, approxVertexCount);
+		if (m_sourceMesh->trianglesToPolygonIDs.size() > 0)
+			mesh->trianglesToPolygonIDs.resize(faceCount);  // Resize an Array before copying some IDs
 		for (uint32_t f = 0; f < faceCount; f++) {
 			const uint32_t face = m_faceToSourceFaceMap[f];
 			for (uint32_t i = 0; i < 3; i++) {
@@ -7719,7 +7725,7 @@ private:
 			}
 			// Add TriangleIDs and PolygonIDs
 			if (m_sourceMesh->trianglesToPolygonIDs.size() > 0)
-				mesh->trianglesToPolygonIDs.push_back(m_sourceMesh->trianglesToPolygonIDs[m_faceToSourceFaceMap[f]]);
+				mesh->trianglesToPolygonIDs[f] = m_sourceMesh->trianglesToPolygonIDs[m_faceToSourceFaceMap[f]];
 		}
 		// Add faces.
 		for (uint32_t f = 0; f < faceCount; f++) {
@@ -9133,6 +9139,7 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 	internal::Triangulator triangulator;
 	uint32_t polygonVertexStartID = 0;
 	internal::Array<uint32_t> polygon;
+	bool hasQuadOrNGon = false;
 	for (uint32_t face = 0; face < faceCount; face++) {
 		// Decode face indices.
 		const uint32_t faceVertexCount = meshDecl.faceVertexCount ? (uint32_t)meshDecl.faceVertexCount[face] : 3;
@@ -9141,8 +9148,10 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 			if (hasIndices) {
 				uint32_t vertID = DecodeIndex(meshDecl.indexFormat, meshDecl.indexData, meshDecl.indexOffset, polygonVertexStartID + i);
 				polygon.push_back(vertID);
+				if (faceVertexCount > 3) hasQuadOrNGon = true;  // Mesh has quads or NGons.
 				// Check if any index is out of range.
-				if (polygon[i] >= meshDecl.vertexCount) {
+				if (polygon[i] >= meshDecl.vertexCount
+					|| faceVertexCount < 3) {
 					mesh->~Mesh();
 					XA_FREE(mesh);
 					return AddMeshError::IndexOutOfRange;
@@ -9242,7 +9251,6 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 			mesh->addFace(&triIndices[i], ignore, material);
 			if (meshPolygonMapping) {
 				meshPolygonMapping->triangleToPolygonMap.push_back(face);
-				mesh->trianglesToPolygonIDs.push_back(face);  // Add TriangleIDs and PolygonIDs
 			}
 		}
 		if (meshPolygonMapping) {
@@ -9251,6 +9259,9 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 		}
 		polygonVertexStartID += faceVertexCount;  // Add an offset for the next polygon's start index
 	}
+	// Add TriangleIDs and PolygonIDs if we have Quads/NGons
+	if (meshPolygonMapping && hasQuadOrNGon)
+		meshPolygonMapping->triangleToPolygonMap.copyTo(mesh->trianglesToPolygonIDs);
 	if (warningCount > kMaxWarnings)
 		XA_PRINT("   %u additional warnings truncated\n", warningCount - kMaxWarnings);
 	XA_PROFILE_END(addMeshCopyData)
