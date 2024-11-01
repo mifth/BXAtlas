@@ -115,8 +115,8 @@ DataToBlender* RunXAtlas(const DataFromBlender* dataFromBlender)
 
                 const xatlas::Vertex &vert = mesh.vertexArray[mesh.indexArray[j]];
 
-                toBlender->uvs[j * 2] = vert.uv[0] / atlas->width;
-                toBlender->uvs[j * 2 + 1] = vert.uv[1] / atlas->height;
+                toBlender->uvs[j * 2] = vert.uv[0] / static_cast<float>(atlas->width);
+                toBlender->uvs[j * 2 + 1] = vert.uv[1] / static_cast<float>(atlas->height);
 
                 // printf("\rError: %f %f\n", vert.uv[0], vert.uv[1]);
             }

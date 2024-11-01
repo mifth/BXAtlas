@@ -49,7 +49,7 @@ class BXA_OP_Test(bpy.types.Operator):
     def execute(self, context):
         active_obj: bpy.types.Object = context.active_object
 
-        # bpy.ops.ed.undo_push()
+        bpy.ops.ed.undo_push()
 
         # Positions
         mesh_verts = np.zeros(len(active_obj.data.vertices) * 3, dtype=np.float32)

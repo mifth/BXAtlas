@@ -34,6 +34,7 @@ MIT License
 Copyright (c) 2012 Brandon Pelfrey
 */
 #include "xatlas.h"
+#include <cstdint>
 #ifndef XATLAS_C_API
 #define XATLAS_C_API 0
 #endif
@@ -2798,6 +2799,9 @@ private:
 	HashMap<EdgeKey, EdgeHash> m_edgeMap;
 
 public:
+	// Store Polygon IDs. Triangle id is a number, polygon id is a value.
+	Array<uint32_t> trianglesToPolygonIDs;
+
 	class FaceEdgeIterator
 	{
 	public:
@@ -5214,7 +5218,8 @@ struct PlanarCharts
 						continue; // Already assigned.
 					if (m_data.isFaceInChart.get(oface))
 						continue; // Already in a chart.
-					if (!equal(dot(m_data.faceNormals[face], m_data.faceNormals[oface]), 1.0f, kEpsilon))
+					if (!equal(dot(m_data.faceNormals[face], m_data.faceNormals[oface]), 1.0f, kEpsilon)
+						&& m_data.mesh->trianglesToPolygonIDs[f] != m_data.mesh->trianglesToPolygonIDs[oface])  // if Triangle is not a part of a Quad/NGon
 						continue; // Not coplanar.
 					const uint32_t next = m_nextRegionFace[face];
 					m_nextRegionFace[face] = oface;
@@ -5260,6 +5265,7 @@ struct PlanarCharts
 		// The dihedral angle of all boundary edges must be >= 90 degrees.
 		m_charts.clear();
 		m_chartFaces.clear();
+		// Array<uint32_t> AddedPolygonsIDs;  // List of Quads/NGons/Trianges IDs
 		for (uint32_t region = 0; region < regionCount; region++) {
 			const uint32_t firstRegionFace = m_regionFirstFace[region];
 			uint32_t face = firstRegionFace;
@@ -5269,10 +5275,18 @@ struct PlanarCharts
 					if (it.isBoundary())
 						continue; // Ignore mesh boundary edges.
 					const uint32_t oface = it.oppositeFace();
+					// Add Face/Triangle if it's a part of a Quad/NGon
+					// if (m_data.mesh->trianglesToPolygonIDs[face] == m_data.mesh->trianglesToPolygonIDs[oface])
+					// {
+					// 	face = m_nextRegionFace[face];
+					// 	break;
+					// }
 					if (m_faceToRegionId[oface] == region)
 						continue; // Ignore internal edges.
 					const float angle = m_data.edgeDihedralAngles[it.edge()];
-					if (angle > 0.0f && angle < FLT_MAX) { // FLT_MAX on boundaries.
+					if (angle > 0.0f && angle < FLT_MAX
+						&& m_data.mesh->trianglesToPolygonIDs[face] != m_data.mesh->trianglesToPolygonIDs[oface]  // if Triangle is not a part of a Quad/NGon
+						) { // FLT_MAX on boundaries.
 						createChart = false;
 						break;
 					}
@@ -5810,6 +5824,12 @@ private:
 				const uint32_t oface = meshEdgeFace(oedge);
 				if (m_data.isFaceInChart.get(oface))
 					continue; // Face belongs to another chart.
+				// Add Face/Triangle if it's a part of a Quad/NGon
+				if (m_data.mesh->trianglesToPolygonIDs[f] == m_data.mesh->trianglesToPolygonIDs[oface])
+				{
+					chart->candidates.push(0.0f, oface);
+					continue;
+				}
 				if (chart->failedPlanarRegions.contains(m_planarCharts.regionIdFromFace(oface)))
 					continue; // Failed to add this faces planar region to the chart before.
 				const float cost = computeCost(chart, oface);
@@ -7183,6 +7203,8 @@ public:
 				XA_DEBUG_ASSERT(unifiedIndices[i] != UINT32_MAX);
 			}
 			m_unifiedMesh->addFace(unifiedIndices);
+			// Add TriangleIDs and PolygonIDs
+			m_unifiedMesh->trianglesToPolygonIDs.push_back(sourceMesh->trianglesToPolygonIDs[m_faceToSourceFaceMap[f]]);
 		}
 		m_unifiedMesh->createBoundaries();
 		if (m_generatorType == segment::ChartGeneratorType::Planar) {
@@ -7243,6 +7265,7 @@ public:
 				unifiedIndices[i] = sourceVertexToUnifiedVertexMap.get(unifiedVertex);
 			}
 			m_unifiedMesh->addFace(unifiedIndices);
+			m_unifiedMesh->trianglesToPolygonIDs.push_back(sourceMesh->trianglesToPolygonIDs[m_faceToSourceFaceMap[f]]);  // Add TriangleIDs and PolygonIDs
 		}
 		m_unifiedMesh->createBoundaries();
 		// Need to store texcoords for backup/restore so packing can be run multiple times.
@@ -7681,6 +7704,7 @@ private:
 		Mesh *mesh = XA_NEW_ARGS(MemTag::Mesh, Mesh, m_sourceMesh->epsilon(), approxVertexCount, faceCount, m_sourceMesh->flags() & MeshFlags::HasNormals);
 		HashMap<uint32_t, PassthroughHash<uint32_t>> sourceVertexToVertexMap(MemTag::Mesh, approxVertexCount);
 		for (uint32_t f = 0; f < faceCount; f++) {
+			mesh->trianglesToPolygonIDs.push_back(m_sourceMesh->trianglesToPolygonIDs[m_faceToSourceFaceMap[f]]);  // Add TriangleIDs and PolygonIDs
 			const uint32_t face = m_faceToSourceFaceMap[f];
 			for (uint32_t i = 0; i < 3; i++) {
 				const uint32_t vertex = m_sourceMesh->vertexAt(face * 3 + i);
@@ -9103,7 +9127,7 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 	internal::Array<uint32_t> triIndices;
 	internal::Array<uint32_t> indicesIDs;
 	internal::Triangulator triangulator;
-	uint32_t polygonStartID = 0;
+	uint32_t polygonVertexStartID = 0;
 	internal::Array<uint32_t> polygon;
 	for (uint32_t face = 0; face < faceCount; face++) {
 		// Decode face indices.
@@ -9111,7 +9135,7 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 		polygon.clear();
 		for (uint32_t i = 0; i < faceVertexCount; i++) {
 			if (hasIndices) {
-				uint32_t vertID = DecodeIndex(meshDecl.indexFormat, meshDecl.indexData, meshDecl.indexOffset, polygonStartID + i);
+				uint32_t vertID = DecodeIndex(meshDecl.indexFormat, meshDecl.indexData, meshDecl.indexOffset, polygonVertexStartID + i);
 				polygon.push_back(vertID);
 				// Check if any index is out of range.
 				if (polygon[i] >= meshDecl.vertexCount) {
@@ -9120,7 +9144,7 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 					return AddMeshError::IndexOutOfRange;
 				}
 			} else {
-				polygon[i] = polygonStartID + i;
+				polygon[i] = polygonVertexStartID + i;
 			}
 		}
 		// Ignore faces with degenerate or zero length edges.
@@ -9211,15 +9235,16 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 			material = meshDecl.faceMaterialData[face];
 		// Add the face(s).
 		for (uint32_t i = 0; i < triIndices.size(); i += 3) {
+			mesh->trianglesToPolygonIDs.push_back(face);  // Add TriangleIDs and PolygonIDs
 			mesh->addFace(&triIndices[i], ignore, material);
 			if (meshPolygonMapping)
 				meshPolygonMapping->triangleToPolygonMap.push_back(face);
 		}
 		if (meshPolygonMapping) {
 			for (uint32_t i = 0; i < triIndices.size(); i++)
-				meshPolygonMapping->triangleToPolygonIndicesMap.push_back(indicesIDs[i] + polygonStartID);
+				meshPolygonMapping->triangleToPolygonIndicesMap.push_back(indicesIDs[i] + polygonVertexStartID);
 		}
-		polygonStartID += faceVertexCount;  // Add an offset for the next polygon's start index
+		polygonVertexStartID += faceVertexCount;  // Add an offset for the next polygon's start index
 	}
 	if (warningCount > kMaxWarnings)
 		XA_PRINT("   %u additional warnings truncated\n", warningCount - kMaxWarnings);
