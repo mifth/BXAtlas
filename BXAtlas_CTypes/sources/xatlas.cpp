@@ -5225,16 +5225,18 @@ struct PlanarCharts
 					if (m_data.isFaceInChart.get(oface))
 						continue; // Already in a chart.
 					// if Triangle is a part of a Quad/NGon.
-					if (hasQuadsOrNGons && m_data.mesh->trianglesToPolygonIDs[face] == m_data.mesh->trianglesToPolygonIDs[oface]) {
-						// printf("12313 %i %i \n", m_data.mesh->trianglesToPolygonIDs[face], m_data.mesh->trianglesToPolygonIDs[oface]);
-						const uint32_t next = m_nextRegionFace[face];
-						m_nextRegionFace[face] = oface;
-						m_nextRegionFace[oface] = next;
-						m_faceToRegionId[oface] = regionCount;
-						// parsedFaces[oface] = true;
-						// parsedFaces[face] = true;
-						faceStack.push_back(oface);
-						continue;
+					if (hasQuadsOrNGons) {
+						if (m_data.mesh->trianglesToPolygonIDs[face] == m_data.mesh->trianglesToPolygonIDs[oface]) {
+							// printf("12313 %i %i \n", m_data.mesh->trianglesToPolygonIDs[face], m_data.mesh->trianglesToPolygonIDs[oface]);
+							const uint32_t next = m_nextRegionFace[face];
+							m_nextRegionFace[face] = oface;
+							m_nextRegionFace[oface] = next;
+							m_faceToRegionId[oface] = regionCount;
+							parsedFaces[oface] = true;
+							parsedFaces[face] = true;
+							faceStack.push_back(oface);
+							continue;
+						}
 					}
 					if (!equal(dot(m_data.faceNormals[face], m_data.faceNormals[oface]), 1.0f, kEpsilon))
 						continue; // Not coplanar.
@@ -5690,9 +5692,8 @@ private:
 				isPickedFace = true;
 			}
 		}
-
-		if (!isPickedFace) return;
-
+		if (!isPickedFace && m_data.isFaceInChart.get(seed))
+			return;  // all faces are already added to charts.
 		Chart *chart = XA_NEW(MemTag::Default, Chart);
 		chart->id = (int)m_charts.size();
 		m_charts.push_back(chart);
@@ -5706,20 +5707,8 @@ private:
 			const uint32_t f = chart->candidates.pop();
 			if (m_data.isFaceInChart.get(f))
 				continue;
-			if (!addFaceToChart(chart, f)) {  // If Failed to add a triangle
+			if (!addFaceToChart(chart, f))  // If Failed to add a triangle
 				chart->failedPlanarRegions.push_back(m_planarCharts.regionIdFromFace(f));
-			}
-			// if (hasQuadsOrNGons) {  // If added a triangle bu it need to add other tris of a Quad/NGon.
-			// 	const uint32_t quadOrNGonID = m_data.mesh->trianglesToPolygonIDs[f];
-			// 	for (uint32_t f2 = 0; f2 < faceCount; f2++) {
-			// 		// if (f != f2 && m_data.mesh->trianglesToPolygonIDs[f2] == quadOrNGonID)
-			// 		// 	printf("12131 %i, %i, %i, %i, %i \n", f, f2, quadOrNGonID, m_data.mesh->trianglesToPolygonIDs[f2], m_data.isFaceInChart.get(f2));
-			// 		if (f != f2 && m_data.mesh->trianglesToPolygonIDs[f2] == quadOrNGonID && !m_data.isFaceInChart.get(f2))
-			// 		{
-			// 			addFaceToChart(chart, f2);
-			// 		}
-			// 	}
-			// }
 		}
 	}
 
@@ -5803,15 +5792,47 @@ private:
 	bool addFaceToChart(Chart *chart, uint32_t face)
 	{
 		XA_DEBUG_ASSERT(!m_data.isFaceInChart.get(face));
-		const uint32_t oldFaceCount = chart->faces.size();
+		uint32_t oldFaceCount = chart->faces.size();
 		const bool firstFace = oldFaceCount == 0;
+		bool hasQuadsOrNGons = m_data.mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
+		uint32_t meshFaceCount = m_data.mesh->faceCount();
 		// Append the face and any coplanar connected faces to the chart faces array.
 		chart->faces.push_back(face);
 		uint32_t coplanarFace = m_planarCharts.nextRegionFace(face);
 		while (coplanarFace != face) {
 			XA_DEBUG_ASSERT(!m_data.isFaceInChart.get(coplanarFace));
+			// if (!m_data.isFaceInChart.get(coplanarFace))
 			chart->faces.push_back(coplanarFace);
 			coplanarFace = m_planarCharts.nextRegionFace(coplanarFace);
+		}
+		if (hasQuadsOrNGons) {
+			// Add missing triangles of Quad/NGon
+			for (uint32_t i_face : chart->faces) {
+				const uint32_t faceQuadOrNGonID = m_data.mesh->trianglesToPolygonIDs[i_face];
+				const uint32_t nextFace = i_face + 1;
+				for (uint32_t f = nextFace; f < meshFaceCount; f++) {
+					if (m_data.mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
+						if (!chart->faces.contains(f)) {
+							printf("333333333 \n");
+							chart->faces.push_back(f);
+						}
+					}
+					else {break;}
+				}
+				if (i_face > 0) {
+					int32_t f = static_cast<int32_t>(i_face) - 1;
+					while (f >= 0) {
+						if (m_data.mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
+							if (!chart->faces.contains(f)) {
+								printf("444444444 \n");
+								chart->faces.push_back(f);
+							}
+						}
+						else {break;}
+						--f;
+					}
+				}
+			}
 		}
 		const uint32_t faceCount = chart->faces.size();
 		// Compute basis.
@@ -5835,25 +5856,23 @@ private:
 			// Compute orthogonal parameterization and check that it is valid.
 			parameterizeChart(chart);
 			for (uint32_t i = oldFaceCount; i < faceCount; i++)
-				if (!m_data.isFaceInChart.get(chart->faces[i]))  // Check
-					m_faceCharts[chart->faces[i]] = chart->id;
+				// if (!m_data.isFaceInChart.get(chart->faces[i]))  // Check
+				m_faceCharts[chart->faces[i]] = chart->id;
 			if (!isChartParameterizationValid(chart)) {
 				for (uint32_t i = oldFaceCount; i < faceCount; i++)
-					if (!m_data.isFaceInChart.get(chart->faces[i]))  // Check
-						m_faceCharts[chart->faces[i]] = -1;
+					m_faceCharts[chart->faces[i]] = -1;
 				chart->faces.resize(oldFaceCount);
 				return false;
 			}
 		}
-		bool hasQuadsOrNGons = m_data.mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
 		// Add face(s) to chart.
 		chart->basis = basis;
 		chart->area = computeArea(chart, face);
 		chart->boundaryLength = computeBoundaryLength(chart, face);
 		for (uint32_t i = oldFaceCount; i < faceCount; i++) {
 			const uint32_t f = chart->faces[i];
+			// if (m_data.isFaceInChart.get(f)) continue;
 			m_facesLeft--;
-			if (m_data.isFaceInChart.get(f)) continue;
 			m_faceCharts[f] = chart->id;
 			m_data.isFaceInChart.set(f);
 			chart->centroidSum += m_data.mesh->computeFaceCenter(f);
@@ -5861,10 +5880,9 @@ private:
 		chart->centroid = chart->centroidSum / float(chart->faces.size());
 		// Refresh candidates.
 		chart->candidates.clear();
+		// Traverse neighboring faces, add the ones that do not belong to any chart yet.
 		for (uint32_t i = 0; i < faceCount; i++) {
 			const uint32_t f = chart->faces[i];
-
-			// Traverse neighboring faces, add the ones that do not belong to any chart yet.
 			for (uint32_t j = 0; j < 3; j++) {
 				const uint32_t edge = f * 3 + j;
 				const uint32_t oedge = m_data.mesh->oppositeEdge(edge);
@@ -5873,14 +5891,15 @@ private:
 				const uint32_t oface = meshEdgeFace(oedge);
 				if (m_data.isFaceInChart.get(oface))
 					continue; // Face belongs to another chart.
+				// if (hasQuadsOrNGons)
+				// {
+				// 	if (m_data.mesh->trianglesToPolygonIDs[oface] == m_data.mesh->trianglesToPolygonIDs[f] && oface != f) {
+				// 		chart->candidates.push(0.001f, oface);
+				// 		continue;
+				// 	}
+				// }
 				if (chart->failedPlanarRegions.contains(m_planarCharts.regionIdFromFace(oface)))
 					continue; // Failed to add this faces planar region to the chart before.
-				// // Add Face/Triangle if it's a part of a Quad/NGon
-				// if (hasQuadsOrNGons && m_data.mesh->trianglesToPolygonIDs[f] == m_data.mesh->trianglesToPolygonIDs[oface]) {
-				// 	printf("12312331");
-				// 	chart->candidates.push(0.0f, oface);  // 0.0f is a perfect cadidate
-				// 	continue;
-				// }
 				const float cost = computeCost(chart, oface);
 				if (cost < FLT_MAX)
 					chart->candidates.push(cost, oface);
@@ -6831,6 +6850,39 @@ private:
 		m_patch.push_back(face);
 		m_faceInPatch.set(face);
 		m_faceInAnyPatch.set(face);
+		// bool hasQuadsOrNGons = m_mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
+		// if (hasQuadsOrNGons) {
+		// 	// Add missing triangles of Quad/NGon
+		// 	const uint32_t faceQuadOrNGonID = m_mesh->trianglesToPolygonIDs[face];
+		// 	uint32_t meshFaceCount = m_mesh->trianglesToPolygonIDs.size();
+		// 	const uint32_t nextFace = face + 1;
+		// 	for (uint32_t f = nextFace; f < meshFaceCount; f++) {
+		// 		if (m_mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
+		// 			if (!m_patch.contains(f)) {
+		// 				// printf("333333333xxx \n");
+		// 				m_patch.push_back(f);
+		// 				m_faceInPatch.set(f);
+		// 				m_faceInAnyPatch.set(f);
+		// 			}
+		// 		}
+		// 		else {break;}
+		// 	}
+		// 	if (face > 0) {
+		// 		int32_t f = static_cast<int32_t>(face) - 1;
+		// 		while (f >= 0) {
+		// 			if (m_mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
+		// 				if (!m_patch.contains(f)) {
+		// 					// printf("444444444xxxx \n");
+		// 					m_patch.push_back(f);
+		// 					m_faceInPatch.set(f);
+		// 					m_faceInAnyPatch.set(f);
+		// 				}
+		// 			}
+		// 			else {break;}
+		// 			--f;
+		// 		}
+		// 	}
+		// }
 		// Find new candidate faces on the patch incident to the newly added face.
 		for (Mesh::FaceEdgeIterator it(m_mesh, face); !it.isDone(); it.advance()) {
 			const uint32_t oface = it.oppositeFace();
