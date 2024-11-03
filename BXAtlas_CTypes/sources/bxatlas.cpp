@@ -93,6 +93,8 @@ DataToBlender* RunXAtlas(const DataFromBlender* dataFromBlender)
 
         xatlas::Generate(atlas, chartOptions, packOptions);
 
+        printf("----- XAtlasCPP Atlas is Generated! \n");
+
         for (uint32_t i = 0; i < atlas->meshCount; i++) 
         {
             const xatlas::Mesh& mesh = atlas->meshes[i];
