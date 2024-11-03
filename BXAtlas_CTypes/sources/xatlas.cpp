@@ -5674,23 +5674,30 @@ private:
 private:
 	void createChart(float threshold)
 	{
-		Chart *chart = XA_NEW(MemTag::Default, Chart);
-		chart->id = (int)m_charts.size();
-		m_charts.push_back(chart);
 		bool hasQuadsOrNGons = m_data.mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
 		// Pick a face not used by any chart yet, belonging to the largest planar region.
-		chart->seed = 0;
 		float largestArea = 0.0f;
 		const uint32_t faceCount = m_data.mesh->faceCount();
+		bool isPickedFace = false;
+		uint32_t seed = 0;
 		for (uint32_t f = 0; f < faceCount; f++) {
 			if (m_data.isFaceInChart.get(f))
 				continue;
 			const float area = m_planarCharts.regionArea(m_planarCharts.regionIdFromFace(f));
 			if (area > largestArea) {
 				largestArea = area;
-				chart->seed = f;
+				seed = f;
+				isPickedFace = true;
 			}
 		}
+
+		if (!isPickedFace) return;
+
+		Chart *chart = XA_NEW(MemTag::Default, Chart);
+		chart->id = (int)m_charts.size();
+		m_charts.push_back(chart);
+		chart->seed = seed;
+
 		addFaceToChart(chart, chart->seed);
 		// Grow the chart as much as possible within the given threshold.
 		for (;;) {
@@ -5702,17 +5709,17 @@ private:
 			if (!addFaceToChart(chart, f)) {  // If Failed to add a triangle
 				chart->failedPlanarRegions.push_back(m_planarCharts.regionIdFromFace(f));
 			}
-			if (hasQuadsOrNGons) {  // If added a triangle bu it need to add other tris of a Quad/NGon.
-				const uint32_t quadOrNGonID = m_data.mesh->trianglesToPolygonIDs[f];
-				for (uint32_t f2 = 0; f2 < faceCount; f2++) {
-					// if (f != f2 && m_data.mesh->trianglesToPolygonIDs[f2] == quadOrNGonID)
-					// 	printf("12131 %i, %i, %i, %i, %i \n", f, f2, quadOrNGonID, m_data.mesh->trianglesToPolygonIDs[f2], m_data.isFaceInChart.get(f2));
-					if (f != f2 && m_data.mesh->trianglesToPolygonIDs[f2] == quadOrNGonID && !m_data.isFaceInChart.get(f2))
-					{
-						addFaceToChart(chart, f2);
-					}
-				}
-			}
+			// if (hasQuadsOrNGons) {  // If added a triangle bu it need to add other tris of a Quad/NGon.
+			// 	const uint32_t quadOrNGonID = m_data.mesh->trianglesToPolygonIDs[f];
+			// 	for (uint32_t f2 = 0; f2 < faceCount; f2++) {
+			// 		// if (f != f2 && m_data.mesh->trianglesToPolygonIDs[f2] == quadOrNGonID)
+			// 		// 	printf("12131 %i, %i, %i, %i, %i \n", f, f2, quadOrNGonID, m_data.mesh->trianglesToPolygonIDs[f2], m_data.isFaceInChart.get(f2));
+			// 		if (f != f2 && m_data.mesh->trianglesToPolygonIDs[f2] == quadOrNGonID && !m_data.isFaceInChart.get(f2))
+			// 		{
+			// 			addFaceToChart(chart, f2);
+			// 		}
+			// 	}
+			// }
 		}
 	}
 
@@ -5828,23 +5835,26 @@ private:
 			// Compute orthogonal parameterization and check that it is valid.
 			parameterizeChart(chart);
 			for (uint32_t i = oldFaceCount; i < faceCount; i++)
-				m_faceCharts[chart->faces[i]] = chart->id;
+				if (!m_data.isFaceInChart.get(chart->faces[i]))  // Check
+					m_faceCharts[chart->faces[i]] = chart->id;
 			if (!isChartParameterizationValid(chart)) {
 				for (uint32_t i = oldFaceCount; i < faceCount; i++)
-					m_faceCharts[chart->faces[i]] = -1;
+					if (!m_data.isFaceInChart.get(chart->faces[i]))  // Check
+						m_faceCharts[chart->faces[i]] = -1;
 				chart->faces.resize(oldFaceCount);
 				return false;
 			}
 		}
+		bool hasQuadsOrNGons = m_data.mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
 		// Add face(s) to chart.
 		chart->basis = basis;
 		chart->area = computeArea(chart, face);
 		chart->boundaryLength = computeBoundaryLength(chart, face);
-		bool hasQuadsOrNGons = m_data.mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
 		for (uint32_t i = oldFaceCount; i < faceCount; i++) {
 			const uint32_t f = chart->faces[i];
-			m_faceCharts[f] = chart->id;
 			m_facesLeft--;
+			if (m_data.isFaceInChart.get(f)) continue;
+			m_faceCharts[f] = chart->id;
 			m_data.isFaceInChart.set(f);
 			chart->centroidSum += m_data.mesh->computeFaceCenter(f);
 		}
@@ -5866,7 +5876,7 @@ private:
 				if (chart->failedPlanarRegions.contains(m_planarCharts.regionIdFromFace(oface)))
 					continue; // Failed to add this faces planar region to the chart before.
 				// // Add Face/Triangle if it's a part of a Quad/NGon
-				// if (hasQuadsOrNGons && m_data.mesh->trianglesToPolygonIDs[f] == m_data.mesh->trianglesToPolygonIDs[face]) {
+				// if (hasQuadsOrNGons && m_data.mesh->trianglesToPolygonIDs[f] == m_data.mesh->trianglesToPolygonIDs[oface]) {
 				// 	printf("12312331");
 				// 	chart->candidates.push(0.0f, oface);  // 0.0f is a perfect cadidate
 				// 	continue;
