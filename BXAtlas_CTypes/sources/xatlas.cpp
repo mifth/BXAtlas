@@ -5807,7 +5807,9 @@ private:
 		}
 		if (hasQuadsOrNGons) {
 			// Add missing triangles of Quad/NGon
-			for (uint32_t i_face : chart->faces) {
+			const uint32_t faceCountTmp = chart->faces.size();
+			for (uint32_t i = oldFaceCount; i < faceCountTmp; i++) {
+				const uint32_t i_face = chart->faces[i];
 				const uint32_t faceQuadOrNGonID = m_data.mesh->trianglesToPolygonIDs[i_face];
 				const uint32_t nextFace = i_face + 1;
 				for (uint32_t f = nextFace; f < meshFaceCount; f++) {
