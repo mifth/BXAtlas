@@ -2799,8 +2799,8 @@ private:
 	HashMap<EdgeKey, EdgeHash> m_edgeMap;
 
 public:
-	// Store Polygon IDs. Triangle id is a number, polygon id is a value. It can be empty if there is no polygon mapping.
-	Array<uint32_t> trianglesToPolygonIDs;  // Triangle index (mesh face index) to polygon index.
+	// Quads/NGons IDs. Triangle id is a number, Quad/NGon id is a value. It can be empty if there is no polygon mapping.
+	Array<uint32_t> trianglesToPolygonIDs;  // Triangle index (mesh face index) to Quad/NGon index.
 
 	class FaceEdgeIterator
 	{
