@@ -5191,19 +5191,21 @@ struct PlanarCharts
 		m_regionFirstFace.clear();
 		m_nextRegionFace.resize(faceCount);
 		m_faceToRegionId.resize(faceCount);
+		bool hasQuadsOrNGons = m_data.mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
 		Array<bool> parsedFaces;
 		parsedFaces.resize(faceCount);
 		for (uint32_t f = 0; f < faceCount; f++) {
 			m_nextRegionFace[f] = f;
 			m_faceToRegionId[f] = UINT32_MAX;
-			parsedFaces[f] = false;
+			if (hasQuadsOrNGons)
+				parsedFaces[f] = false;
 		}
 		Array<uint32_t> faceStack;
 		faceStack.reserve(min(faceCount, 16u));
 		uint32_t regionCount = 0;
-		bool hasQuadsOrNGons = m_data.mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
 		for (uint32_t f = 0; f < faceCount; f++) {
-			if (parsedFaces[f]) continue;
+			if (hasQuadsOrNGons)
+				if (parsedFaces[f]) continue;
 			if (m_nextRegionFace[f] != f)
 				continue; // Already assigned.
 			if (m_data.isFaceInChart.get(f))
@@ -5305,10 +5307,8 @@ struct PlanarCharts
 					const uint32_t oface = it.oppositeFace();
 					if (m_faceToRegionId[oface] == region)
 						continue; // Ignore internal edges.
-					// if Triangle is a part of a Quad/NGon.
+					// // if Triangle is a part of a Quad/NGon.
 					// if (hasQuadsOrNGons && m_data.mesh->trianglesToPolygonIDs[face] == m_data.mesh->trianglesToPolygonIDs[oface]) {
-					// 	createChart = false;
-					// 	break;
 					// } else {
 					const float angle = m_data.edgeDihedralAngles[it.edge()];
 					if (angle > 0.0f && angle < FLT_MAX) { // FLT_MAX on boundaries.
@@ -5815,7 +5815,6 @@ private:
 				for (uint32_t f = nextFace; f < meshFaceCount; f++) {
 					if (m_data.mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
 						if (!chart->faces.contains(f)) {
-							printf("333333333 \n");
 							chart->faces.push_back(f);
 						}
 					}
@@ -5826,7 +5825,6 @@ private:
 					while (f >= 0) {
 						if (m_data.mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
 							if (!chart->faces.contains(f)) {
-								printf("444444444 \n");
 								chart->faces.push_back(f);
 							}
 						}

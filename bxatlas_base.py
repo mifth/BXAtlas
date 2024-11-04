@@ -25,6 +25,7 @@ class DataFromBlender(ctypes.Structure):
         ("loops_total_size", c_int32),
 
         ("normals", POINTER(c_float)),
+
         ("uvs", POINTER(c_float)),
         ]
     
@@ -67,8 +68,10 @@ class BXA_OP_Test(bpy.types.Operator):
         active_obj.data.polygons.foreach_get("loop_total", np_loops_total)
 
         # Normals
-        np_normals = np.empty(len(active_obj.data.loops) * 3, dtype=np.float32)
-        active_obj.data.corner_normals.foreach_get("vector", np_normals)
+        np_normals = None
+        # np_normals = np.empty(len(active_obj.data.loops) * 3, dtype=np.float32)
+        # active_obj.data.corner_normals.foreach_get("vector", np_normals)
+        # np_normals = np.ctypeslib.as_ctypes(np_normals)
 
         # UVs
         np_uvs = None
@@ -78,9 +81,10 @@ class BXA_OP_Test(bpy.types.Operator):
             # uvs = [uv.uv[:] for uv in active_uv]
             np_uvs = np.empty(len(active_obj.data.loops) * 2, dtype=np.float32)
             active_uv.uv.foreach_get("vector", np_uvs)
+            np_uvs = np.ctypeslib.as_ctypes(np_uvs)
+        has_uvs = True
 
-
-        print("Python Data: ", len(poly_indices), len(mesh_verts), len(np_loops_total), len(np_uvs))
+        # print("Python Data: ", len(poly_indices), len(mesh_verts), len(np_loops_total), len(np_uvs))
 
         # Load XAtlas
         bxatlas = self.load_xatlas()
@@ -95,8 +99,9 @@ class BXA_OP_Test(bpy.types.Operator):
            np.ctypeslib.as_ctypes(np_loops_total),
            len(np_loops_total),
 
-           np.ctypeslib.as_ctypes(np_normals),
-           np.ctypeslib.as_ctypes(np_uvs),
+           np_normals,
+
+           np_uvs,
         )
 
         bxatlas.RunXAtlas.argtypes = (POINTER(DataFromBlender), )
@@ -113,7 +118,6 @@ class BXA_OP_Test(bpy.types.Operator):
             b_data = None
 
             return {"CANCELLED"}
-
 
         xatlas_contents = xatlas_data.contents
 
