@@ -1,6 +1,5 @@
 import bpy
 
-# import xatlas
 import numpy as np
 
 import os
@@ -9,8 +8,6 @@ import ctypes
 from ctypes import *
 
 import traceback
-
-# import trimesh
 
 
 class DataFromBlender(ctypes.Structure):
@@ -82,7 +79,6 @@ class BXA_OP_Test(bpy.types.Operator):
             np_uvs = np.empty(len(active_obj.data.loops) * 2, dtype=np.float32)
             active_uv.uv.foreach_get("vector", np_uvs)
             np_uvs = np.ctypeslib.as_ctypes(np_uvs)
-        has_uvs = True
 
         # print("Python Data: ", len(poly_indices), len(mesh_verts), len(np_loops_total), len(np_uvs))
 

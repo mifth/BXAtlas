@@ -3476,6 +3476,21 @@ struct Triangulator
 			outindicesIDs.push_back(1);
 			outindicesIDs.push_back(2);
 		}
+		else if (inputIndices.size() == 3) {
+			// Simple case for quads.
+			outputIndices.push_back(inputIndices[0]);
+			outputIndices.push_back(inputIndices[1]);
+			outputIndices.push_back(inputIndices[2]);
+			outindicesIDs.push_back(0);
+			outindicesIDs.push_back(1);
+			outindicesIDs.push_back(2);
+			outputIndices.push_back(inputIndices[0]);
+			outputIndices.push_back(inputIndices[2]);
+			outputIndices.push_back(inputIndices[3]);
+			outindicesIDs.push_back(0);
+			outindicesIDs.push_back(2);
+			outindicesIDs.push_back(3);
+		}
 		else {
 			// Build 2D polygon projecting vertices onto normal plane.
 			// Faces are not necesarily planar, this is for example the case, when the face comes from filling a hole. In such cases
@@ -5289,17 +5304,7 @@ struct PlanarCharts
 		for (uint32_t region = 0; region < regionCount; region++) {
 			const uint32_t firstRegionFace = m_regionFirstFace[region];
 			uint32_t face = firstRegionFace;
-
-
-
-
-
-
-			bool createChart = false;  // TEST TEST SET TRUE SET TRUE!!!!
-			
-			
-			
-			
+			bool createChart = true;
 			do {
 				for (Mesh::FaceEdgeIterator it(m_data.mesh, face); !it.isDone(); it.advance()) {
 					if (it.isBoundary())
@@ -5307,15 +5312,15 @@ struct PlanarCharts
 					const uint32_t oface = it.oppositeFace();
 					if (m_faceToRegionId[oface] == region)
 						continue; // Ignore internal edges.
-					// // if Triangle is a part of a Quad/NGon.
-					// if (hasQuadsOrNGons && m_data.mesh->trianglesToPolygonIDs[face] == m_data.mesh->trianglesToPolygonIDs[oface]) {
-					// } else {
+					if (hasQuadsOrNGons) {
+						if (m_data.mesh->trianglesToPolygonIDs[face] == m_data.mesh->trianglesToPolygonIDs[oface])
+							continue; // if Triangle is a part of a Quad/NGon.
+					}
 					const float angle = m_data.edgeDihedralAngles[it.edge()];
 					if (angle > 0.0f && angle < FLT_MAX) { // FLT_MAX on boundaries.
 						createChart = false;
 						break;
 					}
-					// }
 				}
 				if (!createChart)
 					break;
@@ -5891,13 +5896,6 @@ private:
 				const uint32_t oface = meshEdgeFace(oedge);
 				if (m_data.isFaceInChart.get(oface))
 					continue; // Face belongs to another chart.
-				// if (hasQuadsOrNGons)
-				// {
-				// 	if (m_data.mesh->trianglesToPolygonIDs[oface] == m_data.mesh->trianglesToPolygonIDs[f] && oface != f) {
-				// 		chart->candidates.push(0.001f, oface);
-				// 		continue;
-				// 	}
-				// }
 				if (chart->failedPlanarRegions.contains(m_planarCharts.regionIdFromFace(oface)))
 					continue; // Failed to add this faces planar region to the chart before.
 				const float cost = computeCost(chart, oface);
@@ -6850,39 +6848,6 @@ private:
 		m_patch.push_back(face);
 		m_faceInPatch.set(face);
 		m_faceInAnyPatch.set(face);
-		// bool hasQuadsOrNGons = m_mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
-		// if (hasQuadsOrNGons) {
-		// 	// Add missing triangles of Quad/NGon
-		// 	const uint32_t faceQuadOrNGonID = m_mesh->trianglesToPolygonIDs[face];
-		// 	uint32_t meshFaceCount = m_mesh->trianglesToPolygonIDs.size();
-		// 	const uint32_t nextFace = face + 1;
-		// 	for (uint32_t f = nextFace; f < meshFaceCount; f++) {
-		// 		if (m_mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
-		// 			if (!m_patch.contains(f)) {
-		// 				// printf("333333333xxx \n");
-		// 				m_patch.push_back(f);
-		// 				m_faceInPatch.set(f);
-		// 				m_faceInAnyPatch.set(f);
-		// 			}
-		// 		}
-		// 		else {break;}
-		// 	}
-		// 	if (face > 0) {
-		// 		int32_t f = static_cast<int32_t>(face) - 1;
-		// 		while (f >= 0) {
-		// 			if (m_mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
-		// 				if (!m_patch.contains(f)) {
-		// 					// printf("444444444xxxx \n");
-		// 					m_patch.push_back(f);
-		// 					m_faceInPatch.set(f);
-		// 					m_faceInAnyPatch.set(f);
-		// 				}
-		// 			}
-		// 			else {break;}
-		// 			--f;
-		// 		}
-		// 	}
-		// }
 		// Find new candidate faces on the patch incident to the newly added face.
 		for (Mesh::FaceEdgeIterator it(m_mesh, face); !it.isDone(); it.advance()) {
 			const uint32_t oface = it.oppositeFace();
@@ -7422,8 +7387,8 @@ public:
 			// Computing charts checks for flipped triangles and boundary intersection. Don't need to do that again here if chart is planar.
 			if (m_type != ChartType::Planar && m_generatorType != segment::ChartGeneratorType::OriginalUv) {
 				XA_PROFILE_START(parameterizeChartsEvaluateQuality)
-				m_quality.computeBoundaryIntersection(m_unifiedMesh, boundaryGrid);
 				m_quality.computeFlippedFaces(m_unifiedMesh, nullptr);
+				m_quality.computeBoundaryIntersection(m_unifiedMesh, boundaryGrid);
 				m_quality.computeMetrics(m_unifiedMesh);
 				XA_PROFILE_END(parameterizeChartsEvaluateQuality)
 				// Use orthogonal parameterization if quality is acceptable.
