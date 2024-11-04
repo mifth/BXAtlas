@@ -5213,14 +5213,14 @@ struct PlanarCharts
 			m_nextRegionFace[f] = f;
 			m_faceToRegionId[f] = UINT32_MAX;
 			if (hasQuadsOrNGons)
-				parsedFaces[f] = false;
+				parsedFaces[f] = false;  // Set default value (false)
 		}
 		Array<uint32_t> faceStack;
 		faceStack.reserve(min(faceCount, 16u));
 		uint32_t regionCount = 0;
 		for (uint32_t f = 0; f < faceCount; f++) {
 			if (hasQuadsOrNGons)
-				if (parsedFaces[f]) continue;
+				if (parsedFaces[f]) continue;  // No need to parse as we already parsed a triangle of a Quad/NGon.
 			if (m_nextRegionFace[f] != f)
 				continue; // Already assigned.
 			if (m_data.isFaceInChart.get(f))
@@ -5244,14 +5244,13 @@ struct PlanarCharts
 					// if Triangle is a part of a Quad/NGon.
 					if (hasQuadsOrNGons) {
 						if (m_data.mesh->trianglesToPolygonIDs[face] == m_data.mesh->trianglesToPolygonIDs[oface]) {
-							// printf("12313 %i %i \n", m_data.mesh->trianglesToPolygonIDs[face], m_data.mesh->trianglesToPolygonIDs[oface]);
 							const uint32_t next = m_nextRegionFace[face];
 							m_nextRegionFace[face] = oface;
 							m_nextRegionFace[oface] = next;
 							m_faceToRegionId[oface] = regionCount;
-							parsedFaces[oface] = true;
-							parsedFaces[face] = true;
 							faceStack.push_back(oface);
+							parsedFaces[oface] = true; // set parsed
+							parsedFaces[face] = true;  // set parsed
 							continue;
 						}
 					}
@@ -5312,7 +5311,7 @@ struct PlanarCharts
 					const uint32_t oface = it.oppositeFace();
 					if (m_faceToRegionId[oface] == region)
 						continue; // Ignore internal edges.
-					if (hasQuadsOrNGons) {
+					if (hasQuadsOrNGons) {  // Accept an entire NGon. As potentially it should be flat.
 						if (m_data.mesh->trianglesToPolygonIDs[face] == m_data.mesh->trianglesToPolygonIDs[oface])
 							continue; // if Triangle is a part of a Quad/NGon.
 					}
@@ -5681,7 +5680,6 @@ private:
 private:
 	void createChart(float threshold)
 	{
-		bool hasQuadsOrNGons = m_data.mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
 		// Pick a face not used by any chart yet, belonging to the largest planar region.
 		float largestArea = 0.0f;
 		const uint32_t faceCount = m_data.mesh->faceCount();
@@ -5813,7 +5811,7 @@ private:
 		if (hasQuadsOrNGons) {
 			// Add missing triangles of Quad/NGon
 			const uint32_t faceCountTmp = chart->faces.size();
-			for (uint32_t i = oldFaceCount; i < faceCountTmp; i++) {
+			for (uint32_t i = oldFaceCount; i < faceCountTmp; i++) {  // Run Forward
 				const uint32_t i_face = chart->faces[i];
 				const uint32_t faceQuadOrNGonID = m_data.mesh->trianglesToPolygonIDs[i_face];
 				const uint32_t nextFace = i_face + 1;
@@ -5825,7 +5823,7 @@ private:
 					}
 					else {break;}
 				}
-				if (i_face > 0) {
+				if (i_face > 0) {  // Run Backward
 					int32_t f = static_cast<int32_t>(i_face) - 1;
 					while (f >= 0) {
 						if (m_data.mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
@@ -7388,7 +7386,8 @@ public:
 			if (m_type != ChartType::Planar && m_generatorType != segment::ChartGeneratorType::OriginalUv) {
 				XA_PROFILE_START(parameterizeChartsEvaluateQuality)
 				m_quality.computeFlippedFaces(m_unifiedMesh, nullptr);
-				m_quality.computeBoundaryIntersection(m_unifiedMesh, boundaryGrid);
+				if (options.computeBoundaryIntersection)  // intersect edges. It can create artifacts (little peeces).
+					m_quality.computeBoundaryIntersection(m_unifiedMesh, boundaryGrid);
 				m_quality.computeMetrics(m_unifiedMesh);
 				XA_PROFILE_END(parameterizeChartsEvaluateQuality)
 				// Use orthogonal parameterization if quality is acceptable.
@@ -7404,7 +7403,8 @@ public:
 					computeLeastSquaresConformalMap(m_unifiedMesh);
 				XA_PROFILE_END(parameterizeChartsLSCM)
 				XA_PROFILE_START(parameterizeChartsEvaluateQuality)
-				m_quality.computeBoundaryIntersection(m_unifiedMesh, boundaryGrid);
+				if (options.computeBoundaryIntersection)  // intersect edges. It can create artifacts (little peeces).
+					m_quality.computeBoundaryIntersection(m_unifiedMesh, boundaryGrid);
 #if XA_DEBUG_EXPORT_OBJ_INVALID_PARAMETERIZATION
 				m_quality.computeFlippedFaces(m_unifiedMesh, &m_paramFlippedFaces);
 #else
