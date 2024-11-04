@@ -34,7 +34,6 @@ MIT License
 Copyright (c) 2012 Brandon Pelfrey
 */
 #include "xatlas.h"
-#include <cstdint>
 #ifndef XATLAS_C_API
 #define XATLAS_C_API 0
 #endif
@@ -5206,9 +5205,10 @@ struct PlanarCharts
 		m_regionFirstFace.clear();
 		m_nextRegionFace.resize(faceCount);
 		m_faceToRegionId.resize(faceCount);
-		bool hasQuadsOrNGons = m_data.mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
-		Array<bool> parsedFaces;
-		parsedFaces.resize(faceCount);
+		const bool hasQuadsOrNGons = m_data.mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
+		Array<bool> parsedFaces;  // For Quads/NGons
+		if (hasQuadsOrNGons)
+			parsedFaces.resize(faceCount);
 		for (uint32_t f = 0; f < faceCount; f++) {
 			m_nextRegionFace[f] = f;
 			m_faceToRegionId[f] = UINT32_MAX;
@@ -5326,7 +5326,6 @@ struct PlanarCharts
 				face = m_nextRegionFace[face];
 			}
 			while (face != firstRegionFace);
-
 			// Create a chart.
 			if (createChart) {
 				Chart chart;
@@ -5697,11 +5696,11 @@ private:
 		}
 		if (!isPickedFace && m_data.isFaceInChart.get(seed))
 			return;  // all faces are already added to charts.
+		// Create a new Chart and do further changes.
 		Chart *chart = XA_NEW(MemTag::Default, Chart);
 		chart->id = (int)m_charts.size();
 		m_charts.push_back(chart);
 		chart->seed = seed;
-
 		addFaceToChart(chart, chart->seed);
 		// Grow the chart as much as possible within the given threshold.
 		for (;;) {
@@ -5710,8 +5709,10 @@ private:
 			const uint32_t f = chart->candidates.pop();
 			if (m_data.isFaceInChart.get(f))
 				continue;
-			if (!addFaceToChart(chart, f))  // If Failed to add a triangle
+			if (!addFaceToChart(chart, f)) {  // If Failed to add a triangle
 				chart->failedPlanarRegions.push_back(m_planarCharts.regionIdFromFace(f));
+				continue;
+			}
 		}
 	}
 
@@ -5795,16 +5796,15 @@ private:
 	bool addFaceToChart(Chart *chart, uint32_t face)
 	{
 		XA_DEBUG_ASSERT(!m_data.isFaceInChart.get(face));
-		uint32_t oldFaceCount = chart->faces.size();
+		const uint32_t oldFaceCount = chart->faces.size();
 		const bool firstFace = oldFaceCount == 0;
-		bool hasQuadsOrNGons = m_data.mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
-		uint32_t meshFaceCount = m_data.mesh->faceCount();
+		const bool hasQuadsOrNGons = m_data.mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
+		const uint32_t meshFaceCount = m_data.mesh->faceCount();
 		// Append the face and any coplanar connected faces to the chart faces array.
 		chart->faces.push_back(face);
 		uint32_t coplanarFace = m_planarCharts.nextRegionFace(face);
 		while (coplanarFace != face) {
 			XA_DEBUG_ASSERT(!m_data.isFaceInChart.get(coplanarFace));
-			// if (!m_data.isFaceInChart.get(coplanarFace))
 			chart->faces.push_back(coplanarFace);
 			coplanarFace = m_planarCharts.nextRegionFace(coplanarFace);
 		}
@@ -5859,7 +5859,6 @@ private:
 			// Compute orthogonal parameterization and check that it is valid.
 			parameterizeChart(chart);
 			for (uint32_t i = oldFaceCount; i < faceCount; i++)
-				// if (!m_data.isFaceInChart.get(chart->faces[i]))  // Check
 				m_faceCharts[chart->faces[i]] = chart->id;
 			if (!isChartParameterizationValid(chart)) {
 				for (uint32_t i = oldFaceCount; i < faceCount; i++)
@@ -5874,17 +5873,16 @@ private:
 		chart->boundaryLength = computeBoundaryLength(chart, face);
 		for (uint32_t i = oldFaceCount; i < faceCount; i++) {
 			const uint32_t f = chart->faces[i];
-			// if (m_data.isFaceInChart.get(f)) continue;
-			m_facesLeft--;
 			m_faceCharts[f] = chart->id;
+			m_facesLeft--;
 			m_data.isFaceInChart.set(f);
 			chart->centroidSum += m_data.mesh->computeFaceCenter(f);
 		}
 		chart->centroid = chart->centroidSum / float(chart->faces.size());
 		// Refresh candidates.
 		chart->candidates.clear();
-		// Traverse neighboring faces, add the ones that do not belong to any chart yet.
 		for (uint32_t i = 0; i < faceCount; i++) {
+			// Traverse neighboring faces, add the ones that do not belong to any chart yet.
 			const uint32_t f = chart->faces[i];
 			for (uint32_t j = 0; j < 3; j++) {
 				const uint32_t edge = f * 3 + j;
@@ -7240,7 +7238,8 @@ public:
 		m_originalIndices.resize(faces.length * 3);
 		// Add geometry.
 		const uint32_t faceCount = faces.length;
-		if (sourceMesh->trianglesToPolygonIDs.size() > 0)
+		const bool hasQuadsOrNGons = sourceMesh->trianglesToPolygonIDs.size() > 0 ? true : false;
+		if (hasQuadsOrNGons)
 			m_unifiedMesh->trianglesToPolygonIDs.resize(faceCount);  // Resize an Array Before copying some IDs
 		for (uint32_t f = 0; f < faceCount; f++) {
 			uint32_t unifiedIndices[3];
@@ -7270,7 +7269,7 @@ public:
 			}
 			m_unifiedMesh->addFace(unifiedIndices);
 			// Add TriangleIDs and PolygonIDs
-			if (sourceMesh->trianglesToPolygonIDs.size() > 0)
+			if (hasQuadsOrNGons)
 				m_unifiedMesh->trianglesToPolygonIDs[f] = sourceMesh->trianglesToPolygonIDs[m_faceToSourceFaceMap[f]];
 		}
 		m_unifiedMesh->createBoundaries();
@@ -7294,6 +7293,7 @@ public:
 	{
 		const uint32_t faceCount = faces.length;
 		m_faceToSourceFaceMap.resize(faceCount);
+		const bool hasQuadsOrNGons = sourceMesh->trianglesToPolygonIDs.size() > 0 ? true : false;
 		for (uint32_t i = 0; i < faceCount; i++)
 			m_faceToSourceFaceMap[i] = parent->m_faceToSourceFaceMap[faces[i]]; // Map faces to parent chart source mesh.
 		// Copy face indices.
@@ -7323,7 +7323,7 @@ public:
 		}
 		// Add faces.
 		m_originalIndices.resize(faceCount * 3);
-		if (sourceMesh->trianglesToPolygonIDs.size() > 0)  // NOTE FOR FUTURE! Maybe "parentMesh" should be used instead of "sourceMesh"
+		if (hasQuadsOrNGons)  // NOTE FOR FUTURE! Maybe "parentMesh" should be used instead of "sourceMesh"
 			m_unifiedMesh->trianglesToPolygonIDs.resize(faceCount);  // Resize an Array Before copying some IDs
 		for (uint32_t f = 0; f < faceCount; f++) {
 			uint32_t unifiedIndices[3];
@@ -7335,7 +7335,7 @@ public:
 			}
 			m_unifiedMesh->addFace(unifiedIndices);
 			// Add TriangleIDs and PolygonIDs
-			if (sourceMesh->trianglesToPolygonIDs.size() > 0)  // NOTE FOR FUTURE! Maybe "parentMesh" should be used instead of "sourceMesh"
+			if (hasQuadsOrNGons)  // NOTE FOR FUTURE! Maybe "parentMesh" should be used instead of "sourceMesh"
 				m_unifiedMesh->trianglesToPolygonIDs[f] = sourceMesh->trianglesToPolygonIDs[m_faceToSourceFaceMap[f]];
 		}
 		m_unifiedMesh->createBoundaries();
@@ -7385,9 +7385,9 @@ public:
 			// Computing charts checks for flipped triangles and boundary intersection. Don't need to do that again here if chart is planar.
 			if (m_type != ChartType::Planar && m_generatorType != segment::ChartGeneratorType::OriginalUv) {
 				XA_PROFILE_START(parameterizeChartsEvaluateQuality)
-				m_quality.computeFlippedFaces(m_unifiedMesh, nullptr);
 				if (options.computeBoundaryIntersection)  // intersect edges. It can create artifacts (little peeces).
 					m_quality.computeBoundaryIntersection(m_unifiedMesh, boundaryGrid);
+				m_quality.computeFlippedFaces(m_unifiedMesh, nullptr);
 				m_quality.computeMetrics(m_unifiedMesh);
 				XA_PROFILE_END(parameterizeChartsEvaluateQuality)
 				// Use orthogonal parameterization if quality is acceptable.
@@ -7776,7 +7776,8 @@ private:
 		const uint32_t approxVertexCount = min(faceCount * 3, m_sourceMesh->vertexCount());
 		Mesh *mesh = XA_NEW_ARGS(MemTag::Mesh, Mesh, m_sourceMesh->epsilon(), approxVertexCount, faceCount, m_sourceMesh->flags() & MeshFlags::HasNormals);
 		HashMap<uint32_t, PassthroughHash<uint32_t>> sourceVertexToVertexMap(MemTag::Mesh, approxVertexCount);
-		if (m_sourceMesh->trianglesToPolygonIDs.size() > 0)
+		const bool hasQuadsOrNGons = m_sourceMesh->trianglesToPolygonIDs.size() > 0 ? true : false;
+		if (hasQuadsOrNGons)
 			mesh->trianglesToPolygonIDs.resize(faceCount);  // Resize an Array before copying some IDs
 		for (uint32_t f = 0; f < faceCount; f++) {
 			const uint32_t face = m_faceToSourceFaceMap[f];
@@ -7791,7 +7792,7 @@ private:
 				}
 			}
 			// Add TriangleIDs and PolygonIDs
-			if (m_sourceMesh->trianglesToPolygonIDs.size() > 0)
+			if (hasQuadsOrNGons)
 				mesh->trianglesToPolygonIDs[f] = m_sourceMesh->trianglesToPolygonIDs[m_faceToSourceFaceMap[f]];
 		}
 		// Add faces.
@@ -9184,10 +9185,6 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 			normal = DecodeNormal(meshDecl, i);
 		if (meshDecl.vertexUvData)
 			texcoord = DecodeUv(meshDecl, i);
-		
-		// if (i % 100 == 0)
-		// 	printf("AAaaaaa %i %i \n", i, meshDecl.vertexCount);
-			
 		mesh->addVertex(DecodePosition(meshDecl, i), normal, texcoord);
 	}
 	MeshPolygonMapping *meshPolygonMapping = nullptr;
@@ -9316,9 +9313,8 @@ AddMeshError AddMesh(Atlas *atlas, const MeshDecl &meshDecl, uint32_t meshCountH
 		// Add the face(s).
 		for (uint32_t i = 0; i < triIndices.size(); i += 3) {
 			mesh->addFace(&triIndices[i], ignore, material);
-			if (meshPolygonMapping) {
+			if (meshPolygonMapping)
 				meshPolygonMapping->triangleToPolygonMap.push_back(face);
-			}
 		}
 		if (meshPolygonMapping) {
 			for (uint32_t i = 0; i < triIndices.size(); i++)
@@ -9775,7 +9771,6 @@ void PackCharts(Atlas *atlas, PackOptions packOptions)
 		for (uint32_t i = 0; i < atlas->meshCount; i++) {
 			Mesh &outputMesh = atlas->meshes[i];
 			MeshPolygonMapping *meshPolygonMapping = ctx->meshPolygonMappings[i];
-			internal::Mesh *originalMesh = ctx->meshes[i];
 			// One polygon can have many triangles. Don't want to process the same polygon more than once when counting indices, building chart faces etc.
 			internal::BitArray polygonTouched;
 			if (meshPolygonMapping) {
