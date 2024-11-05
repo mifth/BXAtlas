@@ -190,7 +190,7 @@ struct ChartOptions
 	bool useInputMeshUvs = false; // Use MeshDecl::vertexUvData for charts.
 	bool fixWinding = false; // Enforce consistent texture coordinate winding.
 
-	bool computeBoundaryIntersection = false; // Used in parameterize() to intersect edges. It can create artifacts (little peeces).
+	bool computeBoundaryIntersection = false; // Used in parameterize() to intersect edges. It can create artifacts (little pieces).
 };
 
 // Call after all AddMesh calls. Can be called multiple times to recompute charts with different options.

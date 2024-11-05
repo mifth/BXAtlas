@@ -7385,7 +7385,7 @@ public:
 			// Computing charts checks for flipped triangles and boundary intersection. Don't need to do that again here if chart is planar.
 			if (m_type != ChartType::Planar && m_generatorType != segment::ChartGeneratorType::OriginalUv) {
 				XA_PROFILE_START(parameterizeChartsEvaluateQuality)
-				if (options.computeBoundaryIntersection)  // intersect edges. It can create artifacts (little peeces).
+				if (options.computeBoundaryIntersection)  // intersect edges. It can create artifacts (little pieces).
 					m_quality.computeBoundaryIntersection(m_unifiedMesh, boundaryGrid);
 				m_quality.computeFlippedFaces(m_unifiedMesh, nullptr);
 				m_quality.computeMetrics(m_unifiedMesh);
