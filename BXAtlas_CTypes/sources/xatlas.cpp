@@ -6686,6 +6686,7 @@ struct PiecewiseParam
 		// Add the seed face (first unassigned face) to the patch.
 		const uint32_t faceCount = m_mesh->faceCount();
 		uint32_t seed = UINT32_MAX;
+		const bool hasQuadsOrNGons = m_mesh->trianglesToPolygonIDs.size() > 0 ? true : false;
 		for (uint32_t f = 0; f < faceCount; f++) {
 			if (m_faceInAnyPatch.get(f))
 				continue;
@@ -6800,6 +6801,40 @@ struct PiecewiseParam
 				XA_PROFILE_END(parameterizeChartsPiecewiseBoundaryIntersection)
 			}
 		}
+		if (hasQuadsOrNGons) {
+			// Add other triangles of already added Quads/NGons
+			for (uint32_t f1 = 0; f1 < m_patch.size(); f1++) {
+				// uint32_t polygonID = m_mesh->trianglesToPolygonIDs[f]; // ID of a Quad/NGon
+				const uint32_t i_face = m_patch[f1];
+				const uint32_t faceQuadOrNGonID = m_mesh->trianglesToPolygonIDs[i_face];
+				const uint32_t nextFace = i_face + 1;
+				for (uint32_t f = nextFace; f < faceCount; f++) {
+					if (m_mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
+						if (!m_faceInAnyPatch.get(f)) {
+								m_patch.push_back(f);
+								m_faceInPatch.set(f);
+								m_faceInAnyPatch.set(f);
+						}
+					}
+					else {break;}
+				}
+				if (i_face > 0) {  // Run Backward
+					int32_t f = static_cast<int32_t>(i_face) - 1;
+					while (f >= 0) {
+						if (m_mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
+							if (!m_faceInAnyPatch.get(f)) {
+								m_patch.push_back(f);
+								m_faceInPatch.set(f);
+								m_faceInAnyPatch.set(f);
+							}
+						}
+						else {break;}
+						--f;
+					}
+				}
+			}
+			
+		}
 		return true;
 	}
 
@@ -6864,11 +6899,13 @@ private:
 			}
 			XA_DEBUG_ASSERT(freeVertex != UINT32_MAX);
 			if (m_vertexInPatch.get(freeVertex)) {
-#if 0
+// #if 0
 				// If the free vertex is already in the patch, the face is enclosed by the patch. Add the face to the patch - don't need to assign texcoords.
+				if (m_faceInAnyPatch.get(oface))
+					continue;
 				freeVertex = UINT32_MAX;
 				addFaceToPatch(oface);
-#endif
+// #endif
 				continue;
 			}
 			// Check this here rather than above so faces enclosed by the patch are always added.
@@ -7385,8 +7422,7 @@ public:
 			// Computing charts checks for flipped triangles and boundary intersection. Don't need to do that again here if chart is planar.
 			if (m_type != ChartType::Planar && m_generatorType != segment::ChartGeneratorType::OriginalUv) {
 				XA_PROFILE_START(parameterizeChartsEvaluateQuality)
-				if (options.computeBoundaryIntersection)  // intersect edges. It can create artifacts (little pieces).
-					m_quality.computeBoundaryIntersection(m_unifiedMesh, boundaryGrid);
+				m_quality.computeBoundaryIntersection(m_unifiedMesh, boundaryGrid);
 				m_quality.computeFlippedFaces(m_unifiedMesh, nullptr);
 				m_quality.computeMetrics(m_unifiedMesh);
 				XA_PROFILE_END(parameterizeChartsEvaluateQuality)
@@ -7403,8 +7439,7 @@ public:
 					computeLeastSquaresConformalMap(m_unifiedMesh);
 				XA_PROFILE_END(parameterizeChartsLSCM)
 				XA_PROFILE_START(parameterizeChartsEvaluateQuality)
-				if (options.computeBoundaryIntersection)  // intersect edges. It can create artifacts (little peeces).
-					m_quality.computeBoundaryIntersection(m_unifiedMesh, boundaryGrid);
+				m_quality.computeBoundaryIntersection(m_unifiedMesh, boundaryGrid);
 #if XA_DEBUG_EXPORT_OBJ_INVALID_PARAMETERIZATION
 				m_quality.computeFlippedFaces(m_unifiedMesh, &m_paramFlippedFaces);
 #else
