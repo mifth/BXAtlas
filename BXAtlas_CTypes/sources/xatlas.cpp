@@ -6901,8 +6901,6 @@ private:
 			if (m_vertexInPatch.get(freeVertex)) {
 // #if 0
 				// If the free vertex is already in the patch, the face is enclosed by the patch. Add the face to the patch - don't need to assign texcoords.
-				if (m_faceInAnyPatch.get(oface))
-					continue;
 				freeVertex = UINT32_MAX;
 				addFaceToPatch(oface);
 // #endif
