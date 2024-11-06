@@ -8,6 +8,7 @@ import ctypes
 from ctypes import *
 
 import traceback
+import time
 
 
 class DataFromBlender(ctypes.Structure):
@@ -47,18 +48,17 @@ class BXA_OP_Test(bpy.types.Operator):
     def execute(self, context):
         active_obj: bpy.types.Object = context.active_object
 
-        bpy.ops.ed.undo_push()
+        if not active_obj:
+            return {"CANCELLED"}
+        
+        # bpy.ops.ed.undo_push()
 
         # Positions
-        mesh_verts = np.zeros(len(active_obj.data.vertices) * 3, dtype=np.float32)
+        mesh_verts = np.empty(len(active_obj.data.vertices) * 3, dtype=np.float32)
         active_obj.data.vertices.foreach_get('co', mesh_verts)
 
         # PolyIndices
-        poly_indices = []
-        for poly in active_obj.data.polygons:
-            poly_indices += list(poly.vertices)
-
-        poly_indices = np.ctypeslib.as_array(poly_indices, shape=(len(poly_indices),))
+        poly_indices = np.concatenate([np.array(poly.vertices, dtype=np.int32) for poly in active_obj.data.polygons])
 
         # Get Polygons Loop Start
         np_loops_total = np.empty(len(active_obj.data.polygons), dtype=np.int32)
@@ -79,8 +79,6 @@ class BXA_OP_Test(bpy.types.Operator):
             np_uvs = np.empty(len(active_obj.data.loops) * 2, dtype=np.float32)
             active_uv.uv.foreach_get("vector", np_uvs)
             np_uvs = np.ctypeslib.as_ctypes(np_uvs)
-
-        # print("Python Data: ", len(poly_indices), len(mesh_verts), len(np_loops_total), len(np_uvs))
 
         # Load XAtlas
         bxatlas = self.load_xatlas()
@@ -104,9 +102,17 @@ class BXA_OP_Test(bpy.types.Operator):
         bxatlas.RunXAtlas.restype = ctypes.POINTER(DataToBlender)
 
         try:
+            start_time = time.time()
+
             xatlas_data: DataToBlender = bxatlas.RunXAtlas(b_data)
-        except:
+
+            end_time = time.time()
+            execution_time = end_time - start_time
+            print(f"Execution time: {execution_time:.6f} seconds")
+            
+        except Exception as e:
             print("No Data From XAtlas!")
+            print(e)
             del bxatlas
             del b_data
             xatlas_data = None
