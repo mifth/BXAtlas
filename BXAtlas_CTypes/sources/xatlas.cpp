@@ -3505,7 +3505,7 @@ struct Triangulator
 			outindicesIDs.push_back(1);
 			outindicesIDs.push_back(2);
 		}
-		else if (inputIndices.size() == 3) {
+		else if (inputIndices.size() == 4) {
 			// Simple case for quads.
 			outputIndices.push_back(inputIndices[0]);
 			outputIndices.push_back(inputIndices[1]);
@@ -6840,9 +6840,9 @@ struct PiecewiseParam
 				for (uint32_t f = nextFace; f < faceCount; f++) {
 					if (m_mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
 						if (!m_faceInAnyPatch.get(f)) {
-								m_patch.push_back(f);
-								m_faceInPatch.set(f);
-								m_faceInAnyPatch.set(f);
+							m_patch.push_back(f);
+							m_faceInPatch.set(f);
+							m_faceInAnyPatch.set(f);
 						}
 					}
 					else {break;}

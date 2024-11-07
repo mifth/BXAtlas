@@ -51,6 +51,8 @@ class BXA_OP_Test(bpy.types.Operator):
         if not active_obj:
             return {"CANCELLED"}
         
+        active_obj.data.update()
+
         # bpy.ops.ed.undo_push()
 
         # Positions
@@ -58,7 +60,9 @@ class BXA_OP_Test(bpy.types.Operator):
         active_obj.data.vertices.foreach_get('co', mesh_verts)
 
         # PolyIndices
-        poly_indices = np.concatenate([np.array(poly.vertices, dtype=np.int32) for poly in active_obj.data.polygons])
+        # poly_indices = np.concatenate([np.array(poly.vertices, dtype=np.int32) for poly in active_obj.data.polygons])
+        poly_indices = np.empty(len(active_obj.data.loop_triangles) * 3, dtype=np.int32)
+        active_obj.data.polygons.foreach_get("vertices", poly_indices)
 
         # Get Polygons Loop Start
         np_loops_total = np.empty(len(active_obj.data.polygons), dtype=np.int32)
