@@ -5243,14 +5243,14 @@ struct PlanarCharts
 						continue; // Already in a chart.
 					// if Triangle is a part of a Quad/NGon.
 					if (hasQuadsOrNGons) {
-						if (m_data.mesh->trianglesToPolygonIDs[face] == m_data.mesh->trianglesToPolygonIDs[oface]) {
+						if (m_data.mesh->trianglesToPolygonIDs[face] == m_data.mesh->trianglesToPolygonIDs[oface]
+							&& face != oface) {
 							const uint32_t next = m_nextRegionFace[face];
 							m_nextRegionFace[face] = oface;
 							m_nextRegionFace[oface] = next;
 							m_faceToRegionId[oface] = regionCount;
 							faceStack.push_back(oface);
 							parsedFaces[oface] = true; // set parsed
-							parsedFaces[face] = true;  // set parsed
 							continue;
 						}
 					}
