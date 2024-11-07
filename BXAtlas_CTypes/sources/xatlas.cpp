@@ -6804,7 +6804,6 @@ struct PiecewiseParam
 		if (hasQuadsOrNGons) {
 			// Add other triangles of already added Quads/NGons
 			for (uint32_t f1 = 0; f1 < m_patch.size(); f1++) {
-				// uint32_t polygonID = m_mesh->trianglesToPolygonIDs[f]; // ID of a Quad/NGon
 				const uint32_t i_face = m_patch[f1];
 				const uint32_t faceQuadOrNGonID = m_mesh->trianglesToPolygonIDs[i_face];
 				const uint32_t nextFace = i_face + 1;
@@ -6833,7 +6832,6 @@ struct PiecewiseParam
 					}
 				}
 			}
-			
 		}
 		return true;
 	}
