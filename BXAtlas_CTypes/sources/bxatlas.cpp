@@ -8,6 +8,8 @@ using namespace std;
 
 #include <xatlas.h>
 
+#include <cmath>
+
 
 namespace bxatlas {
 
@@ -16,7 +18,6 @@ namespace bxatlas {
 #else
 #  define DLL00_EXPORT_API
 #endif
-
 
 typedef struct DataFromBlender {
 	float* positions = nullptr;
@@ -101,15 +102,25 @@ DataToBlender* RunXAtlas(const DataFromBlender* dataFromBlender)
 			const xatlas::Mesh& mesh = atlas->meshes[i];
 
 			// To Blender UVs
-			toBlender->uvs = new float[mesh.indexCount * 2];
-			
+			const uint32_t indices_size_uint = static_cast<uint32_t>(dataFromBlender->indices_size);
+			toBlender->uvs = new float[dataFromBlender->indices_size * 2];
+			for (uint32_t j = 0; j < indices_size_uint; j++)
+			{
+				toBlender->uvs[j * 2] = 0.0f;
+				toBlender->uvs[j * 2 + 1] = 0.0f;
+			}
 			for (uint32_t j = 0; j < mesh.indexCount; j++)
 			{
-				const xatlas::Vertex &vert = mesh.vertexArray[mesh.indexArray[j]];
-
-				toBlender->uvs[j * 2] = vert.uv[0] / static_cast<float>(atlas->width);
-				toBlender->uvs[j * 2 + 1] = vert.uv[1] / static_cast<float>(atlas->height);
+				uint32_t currentIndexArray = mesh.indexArray[j];
+				if (currentIndexArray < mesh.vertexCount && currentIndexArray >= 0) {
+					const xatlas::Vertex *vert = &mesh.vertexArray[currentIndexArray];
+					if (std::isfinite(vert->uv[0]) && std::isfinite(vert->uv[1])) {
+						toBlender->uvs[j * 2] = vert->uv[0] / static_cast<float>(atlas->width);
+						toBlender->uvs[j * 2 + 1] = vert->uv[1] / static_cast<float>(atlas->height);
+					}
+				}
 			}
+			// printf("Out IndexCount %i %i \n", mesh.indexCount, dataFromBlender->indices_size);
 		}
 		printf("----- XAtlasCPP is Done! \n");
 	}

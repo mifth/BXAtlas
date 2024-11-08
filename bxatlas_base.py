@@ -138,9 +138,11 @@ class BXA_OP_Test(bpy.types.Operator):
         del xatlas_data
         del bxatlas
         del b_data
+        del xatlas_contents
         xatlas_data = None
         bxatlas = None
         b_data = None
+        xatlas_contents = None
 
         return {"FINISHED"}
 

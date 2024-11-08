@@ -6831,39 +6831,41 @@ struct PiecewiseParam
 				XA_PROFILE_END(parameterizeChartsPiecewiseBoundaryIntersection)
 			}
 		}
-		// // Still it makes artifacts for Quads/NGons. We need a different approach.
-		// if (hasQuadsOrNGons) {
-		// 	// Add other triangles of already added Quads/NGons
-		// 	for (uint32_t f1 = 0; f1 < m_patch.size(); f1++) {
-		// 		const uint32_t i_face = m_patch[f1];
-		// 		const uint32_t faceQuadOrNGonID = m_mesh->trianglesToPolygonIDs[i_face];
-		// 		const uint32_t nextFace = i_face + 1;
-		// 		for (uint32_t f = nextFace; f < faceCount; f++) {
-		// 			if (m_mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
-		// 				if (!m_faceInAnyPatch.get(f)) {
-		// 					m_patch.push_back(f);
-		// 					m_faceInPatch.set(f);
-		// 					m_faceInAnyPatch.set(f);
-		// 				}
-		// 			}
-		// 			else {break;}
-		// 		}
-		// 		if (i_face > 0) {  // Run Backward
-		// 			int32_t f = static_cast<int32_t>(i_face) - 1;
-		// 			while (f >= 0) {
-		// 				if (m_mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
-		// 					if (!m_faceInAnyPatch.get(f)) {
-		// 						m_patch.push_back(f);
-		// 						m_faceInPatch.set(f);
-		// 						m_faceInAnyPatch.set(f);
-		// 					}
-		// 				}
-		// 				else {break;}
-		// 				--f;
-		// 			}
-		// 		}
-		// 	}
-		// }
+		// Still it makes artifacts for Quads/NGons. We need a different approach.
+		if (hasQuadsOrNGons) {
+			// Add other triangles of already added Quads/NGons
+			for (uint32_t f1 = 0; f1 < m_patch.size(); f1++) {
+				const uint32_t i_face = m_patch[f1];
+				const uint32_t faceQuadOrNGonID = m_mesh->trianglesToPolygonIDs[i_face];
+				const uint32_t nextFace = i_face + 1;
+				for (uint32_t f = nextFace; f < faceCount; f++) {
+					if (m_mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
+						if (!m_faceInAnyPatch.get(f)) {
+							m_patch.push_back(f);
+							m_faceInPatch.set(f);
+							m_faceInAnyPatch.set(f);
+							if(m_faceInvalid.get(f)) m_faceInvalid.unset(f);
+						}
+					}
+					else {break;}
+				}
+				if (i_face > 0) {  // Run Backward
+					int32_t f = static_cast<int32_t>(i_face) - 1;
+					while (f >= 0) {
+						if (m_mesh->trianglesToPolygonIDs[f] == faceQuadOrNGonID) {
+							if (!m_faceInAnyPatch.get(f)) {
+								m_patch.push_back(f);
+								m_faceInPatch.set(f);
+								m_faceInAnyPatch.set(f);
+								if(m_faceInvalid.get(f)) m_faceInvalid.unset(f);
+							}
+						}
+						else {break;}
+						--f;
+					}
+				}
+			}
+		}
 		return true;
 	}
 
@@ -7474,9 +7476,14 @@ public:
 				m_quality.computeFlippedFaces(m_unifiedMesh, nullptr);
 #endif
 				// Don't need to call computeMetrics here, that's only used in evaluateOrthoQuality to determine if quality is acceptable enough to use ortho projection.
-				if (m_quality.boundaryIntersection || m_quality.flippedTriangleCount > 0 || m_quality.zeroAreaTriangleCount > 0)
-					if (!hasQuadsOrNGons)  // PiecewiseParam::computeChart() doesn't support Quads/NGons
+				if (m_quality.boundaryIntersection || m_quality.flippedTriangleCount > 0 || m_quality.zeroAreaTriangleCount > 0) {
+					if (hasQuadsOrNGons) {  // PiecewiseParam::computeChart() doesn't support Quads/NGons well
+						if (!m_quality.boundaryIntersection && m_quality.zeroAreaTriangleCount == 0)  // No support for these variants yet.
+							m_isInvalid = true;
+					}
+					else
 						m_isInvalid = true;
+				}
 				XA_PROFILE_END(parameterizeChartsEvaluateQuality)
 			}
 		}
