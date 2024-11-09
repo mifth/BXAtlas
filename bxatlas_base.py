@@ -2,48 +2,54 @@ import bpy
 
 import numpy as np
 
-import os
-
 import ctypes
 from ctypes import *
 
 import traceback
 import time
 
+from .BXAtlas_CTypes.bxatlas_data import *
+from . import bxatlas_utils
 
-class DataFromBlender(ctypes.Structure):
-    _fields_ = [
-        ("positions", POINTER(c_float)),
-        ("positions_size", c_int32),
 
-        ("indices", POINTER(c_int32)),
-        ("indices_size", c_int32),
+class ChartOptionsGroup(bpy.types.PropertyGroup):
+    show_options: bpy.props.BoolProperty(default=True, name="")
 
-        ("loops_total", POINTER(c_int32)),
-        ("loops_total_size", c_int32),
+    maxChartArea: bpy.props.FloatProperty(default=0,)
+    maxBoundaryLength: bpy.props.FloatProperty(default=0,)
 
-        ("normals", POINTER(c_float)),
+    normalDeviationWeight: bpy.props.FloatProperty(default=2,)
+    roundnessWeight: bpy.props.FloatProperty(default=0.01,)
+    straightnessWeight: bpy.props.FloatProperty(default=6,)
+    normalSeamWeight: bpy.props.FloatProperty(default=4,)
+    textureSeamWeight: bpy.props.FloatProperty(default=0.5,)
 
-        ("uvs", POINTER(c_float)),
-        ]
-    
-class DataToBlender(ctypes.Structure):
-    _fields_ = [
-        ("uvs", POINTER(c_float)),
-        ]
+    maxCost: bpy.props.FloatProperty(default=2,)
+    maxIterations: bpy.props.IntProperty(default=1, min=0,)
 
-class BXA_OP_Test(bpy.types.Operator):
-    bl_idname = "bxa.test"
-    bl_label = "Test"
+    useInputMeshUvs: bpy.props.BoolProperty(default=False,)
+    fixWinding: bpy.props.BoolProperty(default=False,)
+
+
+class PackOptionsGroup(bpy.types.PropertyGroup):
+    show_options: bpy.props.BoolProperty(default=True, name="")
+
+    maxChartSize: bpy.props.IntProperty(default=0, min=0,)
+    padding: bpy.props.IntProperty(default=0, min=0,)
+    texelsPerUnit: bpy.props.BoolProperty(default=0,)
+    resolution: bpy.props.IntProperty(default=0, min=0,)
+    bilinear: bpy.props.BoolProperty(default=True,)
+    blockAlign: bpy.props.BoolProperty(default=False,)
+    maxCbruteForceost: bpy.props.BoolProperty(default=False,)
+    # createImage: bpy.props.BoolProperty(default=False,)
+    rotateChartsToAxis: bpy.props.BoolProperty(default=True,)
+    rotateCharts: bpy.props.BoolProperty(default=True,)
+
+
+class BXA_OP_Generate(bpy.types.Operator):
+    bl_idname = "bxa.generate"
+    bl_label = "Generate"
     bl_options = {'REGISTER', 'UNDO'}
-
-    def load_xatlas(self):
-        if os.name == "nt":  # Windows
-            bxatlas = ctypes.CDLL("D:/Repositories/My_Repositories/addons/BXAtlas/BXAtlas_CTypes/build/Release/BXAtlas.dll")
-        # else:  # Linux/macOS
-        #     lib = ctypes.CDLL("./libexample.so")
-
-        return bxatlas
 
     def execute(self, context):
         active_obj: bpy.types.Object = context.active_object
@@ -85,9 +91,9 @@ class BXA_OP_Test(bpy.types.Operator):
             np_uvs = np.ctypeslib.as_ctypes(np_uvs)
 
         # Load XAtlas
-        bxatlas = self.load_xatlas()
+        bxatlas = bxatlas_utils.load_xatlas()
 
-        b_data: DataFromBlender = DataFromBlender(
+        b_data: DataFromPy = DataFromPy(
            np.ctypeslib.as_ctypes(mesh_verts),
            len(mesh_verts),
 
@@ -102,13 +108,13 @@ class BXA_OP_Test(bpy.types.Operator):
            np_uvs,
         )
 
-        bxatlas.RunXAtlas.argtypes = (POINTER(DataFromBlender), )
-        bxatlas.RunXAtlas.restype = ctypes.POINTER(DataToBlender)
+        bxatlas.GenerateXAtlas.argtypes = (POINTER(DataFromPy), )
+        bxatlas.GenerateXAtlas.restype = ctypes.POINTER(DataToPy)
 
         try:
             start_time = time.time()
 
-            xatlas_data: DataToBlender = bxatlas.RunXAtlas(b_data)
+            xatlas_data: DataToPy = bxatlas.GenerateXAtlas(b_data)
 
             end_time = time.time()
             execution_time = end_time - start_time
@@ -148,7 +154,9 @@ class BXA_OP_Test(bpy.types.Operator):
 
 
 classes = (
-    BXA_OP_Test,
+    ChartOptionsGroup,
+    PackOptionsGroup,
+    BXA_OP_Generate,
 )
 
 
@@ -157,7 +165,8 @@ def register():
     for cls in classes:
         register_class(cls)
 
-    # bpy.types.Scene.tmp_properties = PointerProperty( name="Designer Utils Variables", type=TP_PG_Props, description="Designer Utils Properties" )
+    bpy.types.Scene.chart_options_group = bpy.props.PointerProperty( name="Chart Options Group", type=ChartOptionsGroup)
+    bpy.types.Scene.pack_options_group = bpy.props.PointerProperty( name="Pack Options Group", type=PackOptionsGroup)
     
 
 def unregister():
@@ -165,4 +174,5 @@ def unregister():
     for cls in reversed(classes):
         unregister_class(cls)
 
-    # del bpy.types.Scene.tmp_properties
+    del bpy.types.Scene.chart_options_group
+    del bpy.types.Scene.pack_options_group

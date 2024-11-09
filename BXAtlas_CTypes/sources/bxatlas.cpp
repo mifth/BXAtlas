@@ -19,7 +19,7 @@ namespace bxatlas {
 #  define DLL00_EXPORT_API
 #endif
 
-typedef struct DataFromBlender {
+typedef struct DataFromPy {
 	float* positions = nullptr;
 	int positions_size;
 
@@ -32,23 +32,23 @@ typedef struct DataFromBlender {
 	float* normals = nullptr;
 
 	float* uvs = nullptr;
-} DataFromBlender;
+} DataFromPy;
 
-typedef struct DataToBlender {
+typedef struct DataToPy {
 	float* uvs = nullptr;
-} DataToBlender;
+} DataToPy;
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-DLL00_EXPORT_API DataToBlender* RunXAtlas(const DataFromBlender* dataFromBlender);
+DLL00_EXPORT_API DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender);
 
 #if defined(__cplusplus)
 }
 #endif
 
-DataToBlender* RunXAtlas(const DataFromBlender* dataFromBlender)
+DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender)
 {
 	xatlas::Atlas* atlas = xatlas::Create();
 
@@ -56,6 +56,13 @@ DataToBlender* RunXAtlas(const DataFromBlender* dataFromBlender)
 	meshDecl.vertexCount = dataFromBlender->positions_size;
 	meshDecl.vertexPositionData = dataFromBlender->positions;
 	meshDecl.vertexPositionStride = sizeof(float) * 3;
+
+	meshDecl.indexFormat = xatlas::IndexFormat::UInt32;
+	meshDecl.indexCount = dataFromBlender->indices_size;
+	meshDecl.indexData = dataFromBlender->indices;
+
+	meshDecl.faceVertexCount = dataFromBlender->loops_total;
+	meshDecl.faceCount = dataFromBlender->loops_total_size;
 
 	if (dataFromBlender->normals) {
 		meshDecl.vertexNormalData = dataFromBlender->normals;
@@ -66,16 +73,9 @@ DataToBlender* RunXAtlas(const DataFromBlender* dataFromBlender)
 		meshDecl.vertexUvData = dataFromBlender->uvs;
 		meshDecl.vertexUvStride = sizeof(float) * 2;
 	}
-	
-	meshDecl.indexFormat = xatlas::IndexFormat::UInt32;
-	meshDecl.indexCount = dataFromBlender->indices_size;
-	meshDecl.indexData = dataFromBlender->indices;
-
-	meshDecl.faceVertexCount = dataFromBlender->loops_total;
-	meshDecl.faceCount = dataFromBlender->loops_total_size;
 
 	// To Blender Struct
-	DataToBlender* toBlender = new DataToBlender();
+	DataToPy* toBlender = new DataToPy();
 
 	xatlas::ChartOptions chartOptions = xatlas::ChartOptions();
 	// chartOptions.useInputMeshUvs = true;

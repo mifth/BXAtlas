@@ -43,12 +43,11 @@ class TP_AddonPreferences(AddonPreferences):
 
 class BXA_PT_Panel(Panel):
     bl_label = 'BXAtlas'
-    bl_space_type = "VIEW_3D"
+    bl_space_type = "IMAGE_EDITOR"
     bl_region_type = "UI"
     bl_category = "BXAtlas"
 
     colors_state = None
-
 
     def draw(self, context):
         layout = self.layout
@@ -56,7 +55,50 @@ class BXA_PT_Panel(Panel):
 
         col = layout.column()
 
-        col = layout.operator("bxa.test", text="BXAtlas Test")
+        col = layout.operator("bxa.generate", text="Generate")
+
+        col = layout.column()
+
+        box = col.box()
+        box.label(text="Chart Options")
+        chart_options = context.scene.chart_options_group
+        
+        box.prop(chart_options, "show_options", icon="TRIA_DOWN" if chart_options.show_options else "TRIA_RIGHT", emboss=False)
+
+        if chart_options.show_options:
+            box.prop(chart_options, "maxChartArea", text="maxChartArea")
+            box.prop(chart_options, "maxBoundaryLength", text="maxBoundaryLength")
+
+            box.prop(chart_options, "normalDeviationWeight", text="normalDeviationWeight")
+            box.prop(chart_options, "roundnessWeight", text="roundnessWeight")
+            box.prop(chart_options, "straightnessWeight", text="straightnessWeight")
+            box.prop(chart_options, "normalSeamWeight", text="normalSeamWeight")
+            box.prop(chart_options, "textureSeamWeight", text="textureSeamWeight")
+
+            box.prop(chart_options, "maxCost", text="maxCost")
+            box.prop(chart_options, "maxIterations", text="maxIterations")
+
+            box.prop(chart_options, "useInputMeshUvs", text="useInputMeshUvs")
+            box.prop(chart_options, "fixWinding", text="fixWinding")
+
+        col = layout.column()
+
+        box = col.box()
+        box.label(text="Chart Options")
+        pack_options = context.scene.pack_options_group
+        box.prop(pack_options, "show_options", icon="TRIA_DOWN" if pack_options.show_options else "TRIA_RIGHT", emboss=False)
+
+        if pack_options.show_options:
+            box.prop(pack_options, "maxChartSize", text="maxChartSize")
+            box.prop(pack_options, "padding", text="padding")
+            box.prop(pack_options, "texelsPerUnit", text="texelsPerUnit")
+            box.prop(pack_options, "resolution", text="resolution")
+            box.prop(pack_options, "bilinear", text="bilinear")
+            box.prop(pack_options, "blockAlign", text="blockAlign")
+            box.prop(pack_options, "maxCbruteForceost", text="maxCbruteForceost")
+            # box.prop(pack_options, "createImage", text="createImage")
+            box.prop(pack_options, "rotateChartsToAxis", text="rotateChartsToAxis")
+            box.prop(pack_options, "rotateCharts", text="rotateCharts")
 
 classes = (
     TP_AddonPreferences,
