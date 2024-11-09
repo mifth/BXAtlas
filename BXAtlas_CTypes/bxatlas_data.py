@@ -33,23 +33,37 @@ class PackOptionsPy(ctypes.Structure):
 	("rotateCharts", POINTER(c_bool)),
     ]
 
-class DataFromPy(ctypes.Structure):
+class MeshDeclPy(ctypes.Structure):
     _fields_ = [
-        ("positions", POINTER(c_float)),
-        ("positions_size", c_int32),
+        ("vertexPositionData", POINTER(c_float)),
+        ("vertexCount", c_uint32),
 
-        ("indices", POINTER(c_int32)),
-        ("indices_size", c_int32),
+        ("indexData", POINTER(c_uint32)),
+        ("indexCount", c_uint32),
 
-        ("loops_total", POINTER(c_int32)),
-        ("loops_total_size", c_int32),
+        ("faceVertexCount", POINTER(c_uint32)),
+        ("faceCount", c_uint32),
 
-        ("normals", POINTER(c_float)),
+        ("vertexNormalData", POINTER(c_float)),
 
-        ("uvs", POINTER(c_float)),
+        ("vertexUvData", POINTER(c_float)),
         ]
     
+class DataFromPy(ctypes.Structure):
+    _fields_ = [
+        ("meshesDeclPy", POINTER(POINTER(MeshDeclPy))),
+        ("meshesDeclPyCount", c_uint32),
+        ]
+
+class MeshDeclOutPy(ctypes.Structure):
+    _fields_ = [
+        ("vertexUvData", POINTER(c_float)),
+        ("vertexUvDataCount", c_uint32),
+        ("meshID", c_uint32),
+        ]
+
 class DataToPy(ctypes.Structure):
     _fields_ = [
-        ("uvs", POINTER(c_float)),
+        ("meshDeclOutPy", POINTER(POINTER(MeshDeclOutPy))),
+        ("meshDeclOutPyCount", c_uint32),
         ]

@@ -52,105 +52,151 @@ class BXA_OP_Generate(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        active_obj: bpy.types.Object = context.active_object
-
-        if not active_obj:
-            return {"CANCELLED"}
-        
-        active_obj.data.update()
-
         # bpy.ops.ed.undo_push()
 
-        # Positions
-        mesh_verts = np.empty(len(active_obj.data.vertices) * 3, dtype=np.float32)
-        active_obj.data.vertices.foreach_get('co', mesh_verts)
+        decl_meshes_py = []
 
-        # PolyIndices
-        # poly_indices = np.concatenate([np.array(poly.vertices, dtype=np.int32) for poly in active_obj.data.polygons])
-        poly_indices = np.empty(len(active_obj.data.loop_triangles) * 3, dtype=np.int32)
-        active_obj.data.polygons.foreach_get("vertices", poly_indices)
+        sel_objs = context.selected_objects
 
-        # Get Polygons Loop Start
-        np_loops_total = np.empty(len(active_obj.data.polygons), dtype=np.int32)
-        active_obj.data.polygons.foreach_get("loop_total", np_loops_total)
+        if not sel_objs:
+            return {"CANCELLED"}
 
-        # Normals
-        np_normals = None
-        # np_normals = np.empty(len(active_obj.data.loops) * 3, dtype=np.float32)
-        # active_obj.data.corner_normals.foreach_get("vector", np_normals)
-        # np_normals = np.ctypeslib.as_ctypes(np_normals)
+        final_objects = []
+        mesh_decls_py = []
+        self.GetMeshDecls(sel_objs, final_objects, mesh_decls_py)
 
-        # UVs
-        np_uvs = None
-        active_uv = active_obj.data.uv_layers.active
+        if not final_objects:
+            return {"CANCELLED"}
 
-        if active_uv:
-            # uvs = [uv.uv[:] for uv in active_uv]
-            np_uvs = np.empty(len(active_obj.data.loops) * 2, dtype=np.float32)
-            active_uv.uv.foreach_get("vector", np_uvs)
-            np_uvs = np.ctypeslib.as_ctypes(np_uvs)
+        mesh_decls_py_ptr = (POINTER(MeshDeclPy) * len(mesh_decls_py))()
+        for i, mesh_decl in enumerate(mesh_decls_py):
+            mesh_decls_py_ptr[i] = pointer(mesh_decl)
 
         # Load XAtlas
         bxatlas = bxatlas_utils.load_xatlas()
 
         b_data: DataFromPy = DataFromPy(
-           np.ctypeslib.as_ctypes(mesh_verts),
-           len(mesh_verts),
-
-           np.ctypeslib.as_ctypes(poly_indices),
-           len(poly_indices),
-
-           np.ctypeslib.as_ctypes(np_loops_total),
-           len(np_loops_total),
-
-           np_normals,
-
-           np_uvs,
+            mesh_decls_py_ptr,
+            ctypes.c_uint32(len(mesh_decls_py)),
         )
 
-        bxatlas.GenerateXAtlas.argtypes = (POINTER(DataFromPy), )
-        bxatlas.GenerateXAtlas.restype = ctypes.POINTER(DataToPy)
+        xatlas_data: DataToPy = None
 
         try:
             start_time = time.time()
 
-            xatlas_data: DataToPy = bxatlas.GenerateXAtlas(b_data)
+            bxatlas.GenerateXAtlas.argtypes = (POINTER(DataFromPy), )
+            bxatlas.GenerateXAtlas.restype = POINTER(DataToPy)
+
+            xatlas_data = bxatlas.GenerateXAtlas(b_data)
 
             end_time = time.time()
             execution_time = end_time - start_time
             print(f"Execution time: {execution_time:.6f} seconds")
+
+            xatlas_contents = xatlas_data.contents
             
         except Exception as e:
             print("No Data From XAtlas!")
             print(e)
+
+            # Clear
+            del xatlas_data
             del bxatlas
             del b_data
+            del mesh_decls_py_ptr
             xatlas_data = None
             bxatlas = None
             b_data = None
 
             return {"CANCELLED"}
 
-        xatlas_contents = xatlas_data.contents
+        mesh_decls_out = xatlas_contents.meshDeclOutPy
 
-        np_new_uvs = np.ctypeslib.as_array(xatlas_contents.uvs, shape=(len(active_obj.data.loops) * 2,))
+        for i in range(xatlas_contents.meshDeclOutPyCount):
+            print(xatlas_contents.meshDeclOutPy[i][0].meshID, xatlas_contents.meshDeclOutPy[i][0].vertexUvDataCount, xatlas_contents.meshDeclOutPyCount)
 
-        if active_uv:
-            active_uv.uv.foreach_set("vector", np_new_uvs)
+            mesh_decl_out: MeshDeclOutPy = xatlas_contents.meshDeclOutPy[i][0]
 
-        active_obj.data.update()
+            current_obj = final_objects[mesh_decl_out.meshID]
+            
+            np_new_uvs = np.ctypeslib.as_array(mesh_decl_out.vertexUvData, 
+                                               shape=(len(current_obj.data.loops) * 2,))
+
+            active_uv = current_obj.data.uv_layers.active
+
+            if active_uv:
+                active_uv.uv.foreach_set("vector", np_new_uvs)
+
+            current_obj.data.update()
 
         # Clear
         del xatlas_data
         del bxatlas
         del b_data
-        del xatlas_contents
+        del mesh_decls_py_ptr
         xatlas_data = None
         bxatlas = None
         b_data = None
-        xatlas_contents = None
 
         return {"FINISHED"}
+
+
+    def GetMeshDecls(self, sel_objs: list, final_objects: list, mesh_decls_py: list):
+        for obj in sel_objs:
+            # obj.data.update()
+
+            # Positions
+            mesh_verts = np.empty(len(obj.data.vertices) * 3, dtype=np.float32)
+            obj.data.vertices.foreach_get('co', mesh_verts)
+
+            mesh_verts_num = len(mesh_verts)
+
+            # PolyIndices
+            # poly_indices = np.concatenate([np.array(poly.vertices, dtype=np.int32) for poly in active_obj.data.polygons])
+            poly_indices = np.empty(len(obj.data.loop_triangles) * 3, dtype=np.uint32)
+            obj.data.polygons.foreach_get("vertices", poly_indices)
+
+            poly_indices_num = len(poly_indices)
+
+            # Get Polygons Loop Start
+            loops_total = np.empty(len(obj.data.polygons), dtype=np.uint32)
+            obj.data.polygons.foreach_get("loop_total", loops_total)
+
+            loops_total_num = len(loops_total)
+
+            # Normals
+            normals = None
+            # normals = np.empty(len(obj.data.loops) * 3, dtype=np.float32)
+            # obj.data.corner_normals.foreach_get("vector", normals)
+            # normals = np.ctypeslib.as_ctypes(normals)
+
+            # UVs
+            uvs = None
+            active_uv = obj.data.uv_layers.active
+
+            if active_uv:
+                # uvs = [uv.uv[:] for uv in active_uv]
+                uvs = np.empty(len(obj.data.loops) * 2, dtype=np.float32)
+                active_uv.uv.foreach_get("vector", uvs)
+                uvs = np.ctypeslib.as_ctypes(uvs)
+
+            mesh_decl_py = MeshDeclPy(
+                np.ctypeslib.as_ctypes(mesh_verts),
+                ctypes.c_uint32(mesh_verts_num),
+
+                np.ctypeslib.as_ctypes(poly_indices),
+                ctypes.c_uint32(poly_indices_num),
+
+                np.ctypeslib.as_ctypes(loops_total),
+                ctypes.c_uint32(loops_total_num),
+
+                normals,
+                uvs,
+            )
+
+            final_objects.append(obj)
+            mesh_decls_py.append(mesh_decl_py)
 
 
 classes = (
