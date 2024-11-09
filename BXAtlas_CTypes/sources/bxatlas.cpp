@@ -19,6 +19,35 @@ namespace bxatlas {
 #  define DLL00_EXPORT_API
 #endif
 
+typedef struct ChartOptionsPy {
+	float maxChartArea;
+	float maxBoundaryLength;
+	float normalDeviationWeight;
+	float roundnessWeight;
+	float straightnessWeight;
+	float normalSeamWeight;
+	float textureSeamWeight;
+	float maxCost;
+	uint32_t maxIterations;
+	bool useInputMeshUvs;
+	bool fixWinding;
+}
+ChartOptionsPy;
+
+typedef struct PackOptionsPy {
+	uint32_t maxChartSize;
+	uint32_t padding;
+	float texelsPerUnit;
+	uint32_t resolution;
+	bool bilinear;
+	bool blockAlign;
+	bool bruteForce;
+	// bool createImage;
+	bool rotateChartsToAxis;
+	bool rotateCharts;
+}
+PackOptionsPy;
+
 typedef struct DataFromPy {
 	float* positions = nullptr;
 	int positions_size;
