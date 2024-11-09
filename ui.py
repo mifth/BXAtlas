@@ -84,7 +84,7 @@ class BXA_PT_Panel(Panel):
         col = layout.column()
 
         box = col.box()
-        box.label(text="Chart Options")
+        box.label(text="Pack Options")
         pack_options = context.scene.pack_options_group
         box.prop(pack_options, "show_options", icon="TRIA_DOWN" if pack_options.show_options else "TRIA_RIGHT", emboss=False)
 
