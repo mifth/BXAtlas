@@ -103,12 +103,7 @@ DataToBlender* RunXAtlas(const DataFromBlender* dataFromBlender)
 
 			// To Blender UVs
 			const uint32_t indices_size_uint = static_cast<uint32_t>(dataFromBlender->indices_size);
-			toBlender->uvs = new float[dataFromBlender->indices_size * 2];
-			for (uint32_t j = 0; j < indices_size_uint; j++)
-			{
-				toBlender->uvs[j * 2] = 0.0f;
-				toBlender->uvs[j * 2 + 1] = 0.0f;
-			}
+			toBlender->uvs = new float[dataFromBlender->indices_size * 2]();  // () - zero values are initialized
 			for (uint32_t j = 0; j < mesh.indexCount; j++)
 			{
 				uint32_t currentIndexArray = mesh.indexArray[j];
@@ -120,7 +115,6 @@ DataToBlender* RunXAtlas(const DataFromBlender* dataFromBlender)
 					}
 				}
 			}
-			// printf("Out IndexCount %i %i \n", mesh.indexCount, dataFromBlender->indices_size);
 		}
 		printf("----- XAtlasCPP is Done! \n");
 	}
