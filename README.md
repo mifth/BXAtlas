@@ -1,4 +1,5 @@
 BXAtlas is an attempt to use XAtlas in Blender 4.1+.
+The original XAtlas C++ library can be found there: https://github.com/jpcy/xatlas 
 
 Features:
 - UVs generation works.
