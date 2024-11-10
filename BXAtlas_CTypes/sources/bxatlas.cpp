@@ -87,6 +87,7 @@ extern "C" {
 
 DLL00_EXPORT_API DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender, const ChartOptionsPy& chartOptionsPy,
 	const PackOptionsPy& packOptionsPy, bool pack_only);
+	DLL00_EXPORT_API void DeleteDataToPy(DataToPy* dataToPy);
 
 #if defined(__cplusplus)
 }
@@ -209,7 +210,6 @@ DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender, const ChartOptionsPy
 			uint32_t realID = parsedMeshesIDs[i];
 
 			const xatlas::Mesh& currentMesh = atlas->meshes[i];
-			printf("yyyyyyyyy %i %i %i! \n", currentMesh.vertexCount, currentMesh.indexCount, currentMesh.chartCount);
 
 			const MeshDeclPy& currentMeshDecl = dataFromBlender->meshesDeclPy[realID];
 
@@ -223,14 +223,14 @@ DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender, const ChartOptionsPy
 			for (uint32_t j = 0; j < currentMesh.indexCount; j++)
 			{
 				uint32_t currentIndexArray = currentMesh.indexArray[j];
-				if (currentIndexArray < currentMesh.vertexCount && currentIndexArray >= 0) {
+				if (currentIndexArray < currentMesh.vertexCount && currentIndexArray >= 0)
+				{
 					const xatlas::Vertex *vert = &currentMesh.vertexArray[currentIndexArray];
 
 					if (std::isfinite(vert->uv[0]) && std::isfinite(vert->uv[1]))
 					{
 						dataToPy->meshDeclOutPy[i].vertexUvData[j * 2] = vert->uv[0] / static_cast<float>(atlas->width);
 						dataToPy->meshDeclOutPy[i].vertexUvData[j * 2 + 1] = vert->uv[1] / static_cast<float>(atlas->height);
-						printf("vvvvvvvvv %f %f! \n", vert->uv[0], vert->uv[1]);
 					}
 				}
 			}
@@ -260,6 +260,15 @@ DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender, const ChartOptionsPy
 	xatlas::Destroy(atlas);
 
 	return dataToPy;
+}
+
+void DeleteDataToPy(DataToPy* dataToPy)
+{
+	if (dataToPy)
+    {
+        delete[] dataToPy->meshDeclOutPy;
+		dataToPy = nullptr;
+	}
 }
 
 }

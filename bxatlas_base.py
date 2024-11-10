@@ -165,6 +165,10 @@ class BXA_OP_Generate(bpy.types.Operator):
 
             current_obj.data.update()
 
+        # Clear xatlas data
+        bxatlas.DeleteDataToPy.argtypes = (POINTER(DataToPy), )
+        bxatlas.DeleteDataToPy(xatlas_data)
+
         # Clear
         del xatlas_data
         del bxatlas
@@ -214,7 +218,6 @@ def GetMeshDecls(sel_objs: list, final_objects: list, mesh_decls_py: list):
             # uvs = [uv.uv[:] for uv in active_uv]
             uvs = np.empty(len(obj.data.loops) * 2, dtype=np.float32)
             active_uv.uv.foreach_get("vector", uvs)
-            print(uvs)
             uvs = np.ctypeslib.as_ctypes(uvs)
 
         mesh_decl_py = MeshDeclPy(
