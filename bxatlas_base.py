@@ -36,11 +36,11 @@ class PackOptionsGroup(bpy.types.PropertyGroup):
 
     maxChartSize: bpy.props.IntProperty(default=0, min=0,)
     padding: bpy.props.IntProperty(default=0, min=0,)
-    texelsPerUnit: bpy.props.BoolProperty(default=0,)
+    texelsPerUnit: bpy.props.FloatProperty(default=0, min=0,)
     resolution: bpy.props.IntProperty(default=0, min=0,)
     bilinear: bpy.props.BoolProperty(default=True,)
     blockAlign: bpy.props.BoolProperty(default=False,)
-    maxCbruteForceost: bpy.props.BoolProperty(default=False,)
+    bruteForce: bpy.props.BoolProperty(default=False,)
     # createImage: bpy.props.BoolProperty(default=False,)
     rotateChartsToAxis: bpy.props.BoolProperty(default=True,)
     rotateCharts: bpy.props.BoolProperty(default=True,)
@@ -72,9 +72,39 @@ class BXA_OP_Generate(bpy.types.Operator):
         for i, mesh_decl in enumerate(mesh_decls_py):
             mesh_decls_py_ptr[i] = mesh_decl
 
+        chart_gr = context.scene.chart_options_group
+        pack_gr = context.scene.pack_options_group
+
         # Load XAtlas
         bxatlas = bxatlas_utils.load_xatlas()
 
+        # ChartOptionsPy
+        chart_opt: ChartOptionsPy = ChartOptionsPy()
+        chart_opt.maxChartArea = chart_gr.maxChartArea
+        chart_opt.maxBoundaryLength = chart_gr.maxBoundaryLength
+        chart_opt.normalDeviationWeight = chart_gr.normalDeviationWeight
+        chart_opt.roundnessWeight = chart_gr.roundnessWeight
+        chart_opt.straightnessWeight = chart_gr.straightnessWeight
+        chart_opt.normalSeamWeight = chart_gr.normalSeamWeight
+        chart_opt.textureSeamWeight = chart_gr.textureSeamWeight
+        chart_opt.maxCost = chart_gr.maxCost
+        chart_opt.maxIterations = ctypes.c_uint32(chart_gr.maxIterations)
+        chart_opt.useInputMeshUvs = chart_gr.useInputMeshUvs
+        chart_opt.fixWinding = chart_gr.fixWinding
+
+        # PackOptionsPy
+        pack_opt: PackOptionsPy = PackOptionsPy()
+        pack_opt.maxChartSize = ctypes.c_uint32(pack_gr.maxChartSize)
+        pack_opt.padding = ctypes.c_uint32(pack_gr.padding)
+        pack_opt.texelsPerUnit = pack_gr.texelsPerUnit
+        pack_opt.resolution = ctypes.c_uint32(pack_gr.resolution)
+        pack_opt.bilinear = pack_gr.bilinear
+        pack_opt.blockAlign = pack_gr.blockAlign
+        pack_opt.bruteForce = pack_gr.bruteForce
+        pack_opt.rotateChartsToAxis = pack_gr.rotateChartsToAxis
+        pack_opt.rotateCharts = pack_gr.rotateCharts
+
+        # Data From Python
         b_data: DataFromPy = DataFromPy(
             mesh_decls_py_ptr,
             ctypes.c_uint32(len(mesh_decls_py)),
@@ -85,10 +115,10 @@ class BXA_OP_Generate(bpy.types.Operator):
         try:
             start_time = time.time()
 
-            bxatlas.GenerateXAtlas.argtypes = (POINTER(DataFromPy), )
+            bxatlas.GenerateXAtlas.argtypes = (POINTER(DataFromPy), POINTER(ChartOptionsPy), POINTER(PackOptionsPy))
             bxatlas.GenerateXAtlas.restype = POINTER(DataToPy)
 
-            xatlas_data = bxatlas.GenerateXAtlas(b_data)
+            xatlas_data = bxatlas.GenerateXAtlas(b_data, byref(chart_opt), byref(pack_opt))
 
             end_time = time.time()
             execution_time = end_time - start_time
@@ -114,8 +144,6 @@ class BXA_OP_Generate(bpy.types.Operator):
         mesh_decls_out = xatlas_contents.meshDeclOutPy
 
         for i in range(xatlas_contents.meshDeclOutPyCount):
-            print(xatlas_contents.meshDeclOutPy[i].meshID, xatlas_contents.meshDeclOutPy[i].vertexUvDataCount, xatlas_contents.meshDeclOutPyCount)
-
             mesh_decl_out: MeshDeclOutPy = xatlas_contents.meshDeclOutPy[i]
 
             current_obj = final_objects[mesh_decl_out.meshID]

@@ -21,16 +21,16 @@ class ChartOptionsPy(ctypes.Structure):
 
 class PackOptionsPy(ctypes.Structure):
     _fields_ = [
-	("maxChartSize", POINTER(c_uint32)),
-	("padding", POINTER(c_uint32)),
-	("texelsPerUnit", POINTER(c_bool)),
-	("resolution", POINTER(c_uint32)),
-	("bilinear", POINTER(c_bool)),
-	("blockAlign", POINTER(c_bool)),
-	("bruteForce", POINTER(c_bool)),
-	# ("createImage", POINTER(c_bool)),
-	("rotateChartsToAxis", POINTER(c_bool)),
-	("rotateCharts", POINTER(c_bool)),
+	("maxChartSize", c_uint32),
+	("padding", c_uint32),
+	("texelsPerUnit", c_float),
+	("resolution", c_uint32),
+	("bilinear", c_bool),
+	("blockAlign", c_bool),
+	("bruteForce", c_bool),
+	# ("createImage", c_bool),
+	("rotateChartsToAxis", c_bool),
+	("rotateCharts", c_bool),
     ]
 
 class MeshDeclPy(ctypes.Structure):

@@ -95,7 +95,7 @@ class BXA_PT_Panel(Panel):
             box.prop(pack_options, "resolution", text="resolution")
             box.prop(pack_options, "bilinear", text="bilinear")
             box.prop(pack_options, "blockAlign", text="blockAlign")
-            box.prop(pack_options, "maxCbruteForceost", text="maxCbruteForceost")
+            box.prop(pack_options, "bruteForce", text="bruteForce")
             # box.prop(pack_options, "createImage", text="createImage")
             box.prop(pack_options, "rotateChartsToAxis", text="rotateChartsToAxis")
             box.prop(pack_options, "rotateCharts", text="rotateCharts")

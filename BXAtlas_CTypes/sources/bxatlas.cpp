@@ -85,19 +85,42 @@ typedef struct DataToPy {
 extern "C" {
 #endif
 
-DLL00_EXPORT_API DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender);
+DLL00_EXPORT_API DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender, const ChartOptionsPy& chartOptionsPy,
+	const PackOptionsPy& packOptionsPy);
 
 #if defined(__cplusplus)
 }
 #endif
 
-DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender)
+DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender, const ChartOptionsPy& chartOptionsPy,
+	const PackOptionsPy& packOptionsPy)
 {
 	xatlas::Atlas* atlas = xatlas::Create();
 
 	xatlas::ChartOptions chartOptions = xatlas::ChartOptions();
-	// chartOptions.useInputMeshUvs = true;
+	chartOptions.maxChartArea = chartOptionsPy.maxChartArea;
+	chartOptions.maxBoundaryLength = chartOptionsPy.maxBoundaryLength;
+	chartOptions.normalDeviationWeight = chartOptionsPy.normalDeviationWeight;
+	chartOptions.roundnessWeight = chartOptionsPy.roundnessWeight;
+	chartOptions.straightnessWeight = chartOptionsPy.straightnessWeight;
+	chartOptions.normalSeamWeight = chartOptionsPy.normalSeamWeight;
+	chartOptions.textureSeamWeight = chartOptionsPy.textureSeamWeight;
+	chartOptions.maxCost = chartOptionsPy.maxCost;
+	chartOptions.maxIterations = chartOptionsPy.maxIterations;
+	chartOptions.useInputMeshUvs = chartOptionsPy.useInputMeshUvs;
+	chartOptions.fixWinding = chartOptionsPy.fixWinding;
+
 	xatlas::PackOptions packOptions = xatlas::PackOptions();
+	packOptions.maxChartSize = packOptionsPy.maxChartSize;
+	packOptions.padding = packOptionsPy.padding;
+	packOptions.texelsPerUnit = packOptionsPy.texelsPerUnit;
+	packOptions.resolution = packOptionsPy.resolution;
+	packOptions.bilinear = packOptionsPy.bilinear;
+	packOptions.blockAlign = packOptionsPy.blockAlign;
+	packOptions.bruteForce = packOptionsPy.bruteForce;
+	packOptions.rotateChartsToAxis = packOptionsPy.rotateChartsToAxis;
+	packOptions.rotateCharts = packOptionsPy.rotateCharts;
+
 
 	// To Python Struct
 	DataToPy* dataToPy = new DataToPy();
