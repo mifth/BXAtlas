@@ -28,10 +28,13 @@ class PackOptionsPy(ctypes.Structure):
 	("bilinear", c_bool),
 	("blockAlign", c_bool),
 	("bruteForce", c_bool),
-	# ("createImage", c_bool),
+	("createImage", c_bool),
 	("rotateChartsToAxis", c_bool),
 	("rotateCharts", c_bool),
     ]
+
+    _defaults_ = { "createImage" : False,
+    }
 
 class MeshDeclPy(ctypes.Structure):
     _fields_ = [

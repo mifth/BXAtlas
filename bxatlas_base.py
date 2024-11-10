@@ -51,6 +51,12 @@ class BXA_OP_Generate(bpy.types.Operator):
     bl_label = "Generate"
     bl_options = {'REGISTER', 'UNDO'}
 
+    pack_only: bpy.props.BoolProperty(
+        name="Packing Only",
+        default=False,
+        description="Enable packing only mode"
+    )
+
     def execute(self, context):
         # bpy.ops.ed.undo_push()
 
@@ -63,7 +69,7 @@ class BXA_OP_Generate(bpy.types.Operator):
 
         final_objects = []
         mesh_decls_py = []
-        self.GetMeshDecls(sel_objs, final_objects, mesh_decls_py)
+        GetMeshDecls(sel_objs, final_objects, mesh_decls_py)
 
         if not final_objects:
             return {"CANCELLED"}
@@ -101,6 +107,7 @@ class BXA_OP_Generate(bpy.types.Operator):
         pack_opt.bilinear = pack_gr.bilinear
         pack_opt.blockAlign = pack_gr.blockAlign
         pack_opt.bruteForce = pack_gr.bruteForce
+        pack_opt.createImage = False
         pack_opt.rotateChartsToAxis = pack_gr.rotateChartsToAxis
         pack_opt.rotateCharts = pack_gr.rotateCharts
 
@@ -115,10 +122,10 @@ class BXA_OP_Generate(bpy.types.Operator):
         try:
             start_time = time.time()
 
-            bxatlas.GenerateXAtlas.argtypes = (POINTER(DataFromPy), POINTER(ChartOptionsPy), POINTER(PackOptionsPy))
+            bxatlas.GenerateXAtlas.argtypes = (POINTER(DataFromPy), POINTER(ChartOptionsPy), POINTER(PackOptionsPy), c_bool)
             bxatlas.GenerateXAtlas.restype = POINTER(DataToPy)
 
-            xatlas_data = bxatlas.GenerateXAtlas(b_data, byref(chart_opt), byref(pack_opt))
+            xatlas_data = bxatlas.GenerateXAtlas(b_data, byref(chart_opt), byref(pack_opt), self.pack_only)
 
             end_time = time.time()
             execution_time = end_time - start_time
@@ -170,61 +177,62 @@ class BXA_OP_Generate(bpy.types.Operator):
         return {"FINISHED"}
 
 
-    def GetMeshDecls(self, sel_objs: list, final_objects: list, mesh_decls_py: list):
-        for obj in sel_objs:
-            # obj.data.update()
+def GetMeshDecls(sel_objs: list, final_objects: list, mesh_decls_py: list):
+    for obj in sel_objs:
+        # obj.data.update()
 
-            # Positions
-            mesh_verts = np.empty(len(obj.data.vertices) * 3, dtype=np.float32)
-            obj.data.vertices.foreach_get('co', mesh_verts)
+        # Positions
+        mesh_verts = np.empty(len(obj.data.vertices) * 3, dtype=np.float32)
+        obj.data.vertices.foreach_get('co', mesh_verts)
 
-            mesh_verts_num = len(mesh_verts)
+        mesh_verts_num = len(mesh_verts)
 
-            # PolyIndices
-            # poly_indices = np.concatenate([np.array(poly.vertices, dtype=np.int32) for poly in active_obj.data.polygons])
-            poly_indices = np.empty(len(obj.data.loop_triangles) * 3, dtype=np.uint32)
-            obj.data.polygons.foreach_get("vertices", poly_indices)
+        # PolyIndices
+        # poly_indices = np.concatenate([np.array(poly.vertices, dtype=np.int32) for poly in active_obj.data.polygons])
+        poly_indices = np.empty(len(obj.data.loop_triangles) * 3, dtype=np.uint32)
+        obj.data.polygons.foreach_get("vertices", poly_indices)
 
-            poly_indices_num = len(poly_indices)
+        poly_indices_num = len(poly_indices)
 
-            # Get Polygons Loop Start
-            loops_total = np.empty(len(obj.data.polygons), dtype=np.uint32)
-            obj.data.polygons.foreach_get("loop_total", loops_total)
+        # Get Polygons Loop Start
+        loops_total = np.empty(len(obj.data.polygons), dtype=np.uint32)
+        obj.data.polygons.foreach_get("loop_total", loops_total)
 
-            loops_total_num = len(loops_total)
+        loops_total_num = len(loops_total)
 
-            # Normals
-            normals = None
-            # normals = np.empty(len(obj.data.loops) * 3, dtype=np.float32)
-            # obj.data.corner_normals.foreach_get("vector", normals)
-            # normals = np.ctypeslib.as_ctypes(normals)
+        # Normals
+        normals = None
+        # normals = np.empty(len(obj.data.loops) * 3, dtype=np.float32)
+        # obj.data.corner_normals.foreach_get("vector", normals)
+        # normals = np.ctypeslib.as_ctypes(normals)
 
-            # UVs
-            uvs = None
-            active_uv = obj.data.uv_layers.active
+        # UVs
+        uvs = None
+        active_uv = obj.data.uv_layers.active
 
-            if active_uv:
-                # uvs = [uv.uv[:] for uv in active_uv]
-                uvs = np.empty(len(obj.data.loops) * 2, dtype=np.float32)
-                active_uv.uv.foreach_get("vector", uvs)
-                uvs = np.ctypeslib.as_ctypes(uvs)
+        if active_uv:
+            # uvs = [uv.uv[:] for uv in active_uv]
+            uvs = np.empty(len(obj.data.loops) * 2, dtype=np.float32)
+            active_uv.uv.foreach_get("vector", uvs)
+            print(uvs)
+            uvs = np.ctypeslib.as_ctypes(uvs)
 
-            mesh_decl_py = MeshDeclPy(
-                np.ctypeslib.as_ctypes(mesh_verts),
-                ctypes.c_uint32(mesh_verts_num),
+        mesh_decl_py = MeshDeclPy(
+            np.ctypeslib.as_ctypes(mesh_verts),
+            ctypes.c_uint32(mesh_verts_num),
 
-                np.ctypeslib.as_ctypes(poly_indices),
-                ctypes.c_uint32(poly_indices_num),
+            np.ctypeslib.as_ctypes(poly_indices),
+            ctypes.c_uint32(poly_indices_num),
 
-                np.ctypeslib.as_ctypes(loops_total),
-                ctypes.c_uint32(loops_total_num),
+            np.ctypeslib.as_ctypes(loops_total),
+            ctypes.c_uint32(loops_total_num),
 
-                normals,
-                uvs,
-            )
+            normals,
+            uvs,
+        )
 
-            final_objects.append(obj)
-            mesh_decls_py.append(mesh_decl_py)
+        final_objects.append(obj)
+        mesh_decls_py.append(mesh_decl_py)
 
 
 classes = (

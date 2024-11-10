@@ -55,7 +55,11 @@ class BXA_PT_Panel(Panel):
 
         col = layout.column()
 
-        col = layout.operator("bxa.generate", text="Generate")
+        op = layout.operator("bxa.generate", text="Generate")
+        op.pack_only = False
+
+        op = layout.operator("bxa.generate", text="Pack")
+        op.pack_only = True
 
         col = layout.column()
 
