@@ -163,8 +163,6 @@ DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender)
 			const uint32_t indices_size_uint = static_cast<uint32_t>(currentMeshDecl.indexCount);
 
 			// new mesh decl out
-			// MeshDeclOutPy* meshDeclOutPy = new MeshDeclOutPy();
-			// dataToPy->meshDeclOutPy[i] = new MeshDeclOutPy();
 			dataToPy->meshDeclOutPy[i].meshID = realID;
 			dataToPy->meshDeclOutPy[i].vertexUvDataCount = indices_size_uint;
 
@@ -182,9 +180,6 @@ DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender)
 					}
 				}
 			}
-
-			// dataToPy->meshDeclOutPy[i] = meshDeclOutPy;
-			printf("zzzzzzzzzzzz %i! \n", realID);
 		}
 		
 		printf("----- XAtlasCPP is Done! \n");
