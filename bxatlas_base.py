@@ -68,9 +68,9 @@ class BXA_OP_Generate(bpy.types.Operator):
         if not final_objects:
             return {"CANCELLED"}
 
-        mesh_decls_py_ptr = (POINTER(MeshDeclPy) * len(mesh_decls_py))()
+        mesh_decls_py_ptr = (MeshDeclPy * len(mesh_decls_py))()
         for i, mesh_decl in enumerate(mesh_decls_py):
-            mesh_decls_py_ptr[i] = pointer(mesh_decl)
+            mesh_decls_py_ptr[i] = mesh_decl
 
         # Load XAtlas
         bxatlas = bxatlas_utils.load_xatlas()
@@ -114,9 +114,9 @@ class BXA_OP_Generate(bpy.types.Operator):
         mesh_decls_out = xatlas_contents.meshDeclOutPy
 
         for i in range(xatlas_contents.meshDeclOutPyCount):
-            print(xatlas_contents.meshDeclOutPy[i][0].meshID, xatlas_contents.meshDeclOutPy[i][0].vertexUvDataCount, xatlas_contents.meshDeclOutPyCount)
+            print(xatlas_contents.meshDeclOutPy[i].meshID, xatlas_contents.meshDeclOutPy[i].vertexUvDataCount, xatlas_contents.meshDeclOutPyCount)
 
-            mesh_decl_out: MeshDeclOutPy = xatlas_contents.meshDeclOutPy[i][0]
+            mesh_decl_out: MeshDeclOutPy = xatlas_contents.meshDeclOutPy[i]
 
             current_obj = final_objects[mesh_decl_out.meshID]
             

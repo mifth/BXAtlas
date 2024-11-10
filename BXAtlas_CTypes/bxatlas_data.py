@@ -51,7 +51,7 @@ class MeshDeclPy(ctypes.Structure):
     
 class DataFromPy(ctypes.Structure):
     _fields_ = [
-        ("meshesDeclPy", POINTER(POINTER(MeshDeclPy))),
+        ("meshesDeclPy", POINTER(MeshDeclPy)),
         ("meshesDeclPyCount", c_uint32),
         ]
 
@@ -64,6 +64,6 @@ class MeshDeclOutPy(ctypes.Structure):
 
 class DataToPy(ctypes.Structure):
     _fields_ = [
-        ("meshDeclOutPy", POINTER(POINTER(MeshDeclOutPy))),
+        ("meshDeclOutPy", POINTER(MeshDeclOutPy)),
         ("meshDeclOutPyCount", c_uint32),
         ]

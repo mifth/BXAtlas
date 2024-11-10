@@ -65,7 +65,7 @@ typedef struct MeshDeclPy {
 } MeshDeclPy;
 
 typedef struct DataFromPy {
-	MeshDeclPy** meshesDeclPy = nullptr;
+	MeshDeclPy* meshesDeclPy = nullptr;
 	uint32_t meshesDeclPyCount;
 
 } DataFromPy;
@@ -77,7 +77,7 @@ typedef struct MeshDeclOutPy {
 } MeshDeclOutPy;
 
 typedef struct DataToPy {
-	MeshDeclOutPy** meshDeclOutPy = nullptr;
+	MeshDeclOutPy* meshDeclOutPy = nullptr;
 	uint32_t meshDeclOutPyCount;
 } DataToPy;
 
@@ -110,27 +110,27 @@ DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender)
 		// Run Mesh Decl Py
 		for (uint32_t i = 0; i < dataFromBlender->meshesDeclPyCount; i++)
 		{
-			const MeshDeclPy* meshDeclPy = dataFromBlender->meshesDeclPy[i];
+			const MeshDeclPy& meshDeclPy = dataFromBlender->meshesDeclPy[i];
 
 			xatlas::MeshDecl meshDecl;
-			meshDecl.vertexCount = meshDeclPy->vertexCount;
-			meshDecl.vertexPositionData = meshDeclPy->vertexPositionData;
+			meshDecl.vertexCount = meshDeclPy.vertexCount;
+			meshDecl.vertexPositionData = meshDeclPy.vertexPositionData;
 			meshDecl.vertexPositionStride = sizeof(float) * 3;
 
 			meshDecl.indexFormat = xatlas::IndexFormat::UInt32;
-			meshDecl.indexCount = meshDeclPy->indexCount;
-			meshDecl.indexData = meshDeclPy->indexData;
+			meshDecl.indexCount = meshDeclPy.indexCount;
+			meshDecl.indexData = meshDeclPy.indexData;
 
-			meshDecl.faceVertexCount = meshDeclPy->faceVertexCount;
-			meshDecl.faceCount = meshDeclPy->faceCount;
+			meshDecl.faceVertexCount = meshDeclPy.faceVertexCount;
+			meshDecl.faceCount = meshDeclPy.faceCount;
 
-			if (meshDeclPy->vertexNormalData) {
-				meshDecl.vertexNormalData = meshDeclPy->vertexNormalData;
+			if (meshDeclPy.vertexNormalData) {
+				meshDecl.vertexNormalData = meshDeclPy.vertexNormalData;
 				meshDecl.vertexNormalStride = sizeof(float) * 3;
 			}
 
-			if (meshDeclPy->vertexUvData) {
-				meshDecl.vertexUvData = meshDeclPy->vertexUvData;
+			if (meshDeclPy.vertexUvData) {
+				meshDecl.vertexUvData = meshDeclPy.vertexUvData;
 				meshDecl.vertexUvStride = sizeof(float) * 2;
 			}
 
@@ -150,8 +150,8 @@ DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender)
 
 		printf("----- XAtlasCPP Atlas is Generated! \n");
 
-		dataToPy->meshDeclOutPy = new MeshDeclOutPy*[parsedMeshesIDs.size()];
-		dataToPy->meshDeclOutPyCount = parsedMeshesIDs.size();
+		dataToPy->meshDeclOutPy = new MeshDeclOutPy[parsedMeshesIDs.size()];
+		dataToPy->meshDeclOutPyCount = static_cast<uint32_t>(parsedMeshesIDs.size());
 
 		for (uint32_t i = 0; i < atlas->meshCount; i++) 
 		{
@@ -159,16 +159,16 @@ DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender)
 
 			const xatlas::Mesh& currentMesh = atlas->meshes[i];
 
-			MeshDeclPy* currentMeshDecl = dataFromBlender->meshesDeclPy[realID];
-			const uint32_t indices_size_uint = static_cast<uint32_t>(currentMeshDecl->indexCount);
+			const MeshDeclPy& currentMeshDecl = dataFromBlender->meshesDeclPy[realID];
+			const uint32_t indices_size_uint = static_cast<uint32_t>(currentMeshDecl.indexCount);
 
 			// new mesh decl out
 			// MeshDeclOutPy* meshDeclOutPy = new MeshDeclOutPy();
-			dataToPy->meshDeclOutPy[i] = new MeshDeclOutPy();
-			dataToPy->meshDeclOutPy[i]->meshID = realID;
-			dataToPy->meshDeclOutPy[i]->vertexUvDataCount = indices_size_uint;
+			// dataToPy->meshDeclOutPy[i] = new MeshDeclOutPy();
+			dataToPy->meshDeclOutPy[i].meshID = realID;
+			dataToPy->meshDeclOutPy[i].vertexUvDataCount = indices_size_uint;
 
-			dataToPy->meshDeclOutPy[i]->vertexUvData = new float[currentMeshDecl->indexCount * 2]();  // () - zero values are initialized
+			dataToPy->meshDeclOutPy[i].vertexUvData = new float[currentMeshDecl.indexCount * 2]();  // () - zero values are initialized
 
 			// To Blender UVs
 			for (uint32_t j = 0; j < currentMesh.indexCount; j++)
@@ -177,8 +177,8 @@ DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender)
 				if (currentIndexArray < currentMesh.vertexCount && currentIndexArray >= 0) {
 					const xatlas::Vertex *vert = &currentMesh.vertexArray[currentIndexArray];
 					if (std::isfinite(vert->uv[0]) && std::isfinite(vert->uv[1])) {
-						dataToPy->meshDeclOutPy[i]->vertexUvData[j * 2] = vert->uv[0] / static_cast<float>(atlas->width);
-						dataToPy->meshDeclOutPy[i]->vertexUvData[j * 2 + 1] = vert->uv[1] / static_cast<float>(atlas->height);
+						dataToPy->meshDeclOutPy[i].vertexUvData[j * 2] = vert->uv[0] / static_cast<float>(atlas->width);
+						dataToPy->meshDeclOutPy[i].vertexUvData[j * 2 + 1] = vert->uv[1] / static_cast<float>(atlas->height);
 					}
 				}
 			}
