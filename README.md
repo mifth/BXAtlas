@@ -15,7 +15,7 @@ Installation:
 - Select an object in ObjectMode.
 - Go to UV panel and press the Generate button.
 
-Unfortunately, the project is finished to 50% because of having some issues with the XAtlas library itself.
+Unfortunately, the project is finished to 50% due to some issues with the XAtlas library itself.
 
 Problems:
 - AddUVMesh() breaks UVs.
