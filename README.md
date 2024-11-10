@@ -2,10 +2,10 @@ BXAtlas is an attempt to use XAtlas in Blender 4.1+.
 
 Features:
 - UVs generation works.
-- Quads and NGons support is added. This pull request is applied.
-- Fixes of a cross-product calculation. This pull request is applied.
-- Fixes of PiecewiseParam. This pull request is applied.
-- CTypes linked addon.
+- Quads and NGons support is added. This pull request is applied: https://github.com/jpcy/xatlas/pull/138
+- Fixes of a cross-product calculation. This pull request is applied: https://github.com/jpcy/xatlas/pull/131
+- Fixes of PiecewiseParam. This pull request is applied: https://github.com/jpcy/xatlas/pull/141
+- CTypes is used for the Blender addon.
 
 ![image](https://github.com/user-attachments/assets/b94f33a1-146d-4ea1-8f35-27ef7f9af263)
 
