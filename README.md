@@ -19,4 +19,4 @@ Unfortunately, the project is finished to 50% because of having some issues with
 
 Problems:
 - AddUVMesh() breaks UVs.
-- useInputMeshUVs variable breaks UVs.
+- useInputMeshUVs variable breaks UVs: https://github.com/jpcy/xatlas/issues/142
