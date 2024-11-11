@@ -67,7 +67,6 @@ typedef struct MeshDeclPy {
 typedef struct DataFromPy {
 	MeshDeclPy* meshesDeclPy = nullptr;
 	uint32_t meshesDeclPyCount;
-
 } DataFromPy;
 
 typedef struct MeshDeclOutPy {
@@ -266,8 +265,16 @@ void DeleteDataToPy(DataToPy* dataToPy)
 {
 	if (dataToPy)
     {
+        // Loop through each MeshDeclOutPy and delete vertexUvData
+        for (uint32_t i = 0; i < dataToPy->meshDeclOutPyCount; ++i)
+        {
+            delete[] dataToPy->meshDeclOutPy[i].vertexUvData;
+        }
+
         delete[] dataToPy->meshDeclOutPy;
 		dataToPy = nullptr;
+
+		printf("----- XAtlasCPP Data is Cleaned Up! \n");
 	}
 }
 
