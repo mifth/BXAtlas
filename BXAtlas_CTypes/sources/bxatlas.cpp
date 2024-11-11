@@ -239,19 +239,19 @@ DataToPy* GenerateXAtlas(const DataFromPy* dataFromBlender, const ChartOptionsPy
 	}
 	catch (const std::runtime_error& e) {
 		std::cerr << "Runtime error: " << e.what() << std::endl;
-		delete dataToPy;
+		DeleteDataToPy(dataToPy);
 		xatlas::Destroy(atlas);
 		return nullptr;
 	}
 	catch (const std::exception& e) {
 		std::cerr << "Error: " << e.what() << std::endl;
-		delete dataToPy;
+		DeleteDataToPy(dataToPy);
 		xatlas::Destroy(atlas);
 		return nullptr;
 	}
 	catch (...) {
 		std::cerr << "An unknown error occurred." << std::endl;
-		delete dataToPy;
+		DeleteDataToPy(dataToPy);
 		xatlas::Destroy(atlas);
 		return nullptr;
 	}
@@ -272,6 +272,8 @@ void DeleteDataToPy(DataToPy* dataToPy)
         }
 
         delete[] dataToPy->meshDeclOutPy;
+
+		delete dataToPy;
 		dataToPy = nullptr;
 
 		printf("----- XAtlasCPP Data is Cleaned Up! \n");
