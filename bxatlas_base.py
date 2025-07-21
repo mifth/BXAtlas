@@ -60,6 +60,13 @@ class BXA_OP_Generate(bpy.types.Operator):
     def execute(self, context):
         # bpy.ops.ed.undo_push()
 
+        # Record the current mode
+        current_mode = context.active_object.mode if context.active_object else None
+
+        # Switch to object mode
+        if current_mode and current_mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+
         decl_meshes_py = []
 
         sel_objs = context.selected_objects
@@ -178,12 +185,20 @@ class BXA_OP_Generate(bpy.types.Operator):
         bxatlas = None
         b_data = None
 
+        # Restore to the original mode
+        if current_mode and current_mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode=current_mode)
+
         return {"FINISHED"}
 
 
 def GetMeshDecls(sel_objs: list, final_objects: list, mesh_decls_py: list):
     for obj in sel_objs:
         # obj.data.update()
+
+        # Check if the object is a mesh
+        if obj.type != 'MESH':
+            continue
 
         # Positions
         mesh_verts = np.empty(len(obj.data.vertices) * 3, dtype=np.float32)
